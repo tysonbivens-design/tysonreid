@@ -1,6 +1,6 @@
 {
   "name": "tysonreid",
-"version": "0.2.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "14.1.0",
+    "next": "15.1.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "@supabase/ssr": "^0.1.0",
+    "@tiptap/react": "^2.2.4",
+    "@tiptap/starter-kit": "^2.2.4",
+    "@tiptap/extension-link": "^2.2.4",
+    "@tiptap/extension-image": "^2.2.4",
+    "@tiptap/extension-placeholder": "^2.2.4",
     "react": "^18",
     "react-dom": "^18"
   }
