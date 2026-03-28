@@ -15,6 +15,7 @@ export default function Home() {
   const [settings, setSettings] = useState({})
   const [visitorCount, setVisitorCount] = useState(null)
   const [subCount, setSubCount] = useState(null)
+  const [recentPhotos, setRecentPhotos] = useState([])
 
   useEffect(() => {
     fetchAll()
@@ -29,7 +30,8 @@ export default function Home() {
       { data: settingsData },
       { data: postsData },
       { count: visitorCount },
-      { count: subCount }
+      { count: subCount },
+      { data: photosData }
     ] = await Promise.all([
       supabase.from('ticker_items').select('*').eq('active', true).order('sort_order'),
       supabase.from('manifesto_items').select('*').order('sort_order'),
@@ -37,7 +39,8 @@ export default function Home() {
       supabase.from('site_settings').select('*'),
       supabase.from('posts').select('*').eq('status', 'published').order('published_at', { ascending: false }).limit(5),
       supabase.from('visitors').select('*', { count: 'exact', head: true }),
-      supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('status', 'active')
+      supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('photos').select('*').eq('active', true).order('sort_order').limit(4)
     ])
 
     if (tickerData) setTickerItems(tickerData)
@@ -46,6 +49,7 @@ export default function Home() {
     if (postsData) setPosts(postsData)
     if (visitorCount !== null) setVisitorCount(visitorCount)
     if (subCount !== null) setSubCount(subCount)
+    if (photosData) setRecentPhotos(photosData)
 
     if (settingsData) {
       const s = {}
@@ -283,10 +287,20 @@ export default function Home() {
               <Link href="/photos" className="section-all">Gallery →</Link>
             </div>
             <div className="photo-strip">
-              <div className="photo-thumb t1">🏔️</div>
-              <div className="photo-thumb t2">🌿</div>
-              <div className="photo-thumb t3">📷</div>
-              <div className="photo-thumb t4">🍞</div>
+              {recentPhotos.length > 0 ? (
+                recentPhotos.map((photo, i) => (
+                  <Link href="/photos" key={photo.id} className={`photo-thumb t${i + 1}`} style={{backgroundImage: `url(${photo.url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: '0'}}>
+                    <span style={{display:'none'}}>{photo.caption}</span>
+                  </Link>
+                ))
+              ) : (
+                <>
+                  <div className="photo-thumb t1">🏔️</div>
+                  <div className="photo-thumb t2">🌿</div>
+                  <div className="photo-thumb t3">📷</div>
+                  <div className="photo-thumb t4">🍞</div>
+                </>
+              )}
             </div>
             <div className="photo-caption">// recent shots — click to enter gallery</div>
 
