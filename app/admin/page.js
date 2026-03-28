@@ -363,6 +363,28 @@ export default function AdminPage() {
         <div className="admin-content">
           <div className="admin-section-header"><h2>Site Settings</h2></div>
           <div className="settings-grid">
+            <div className="field-group">
+              <label>Profile Photo</label>
+              {siteSettings.avatar_url && (
+                <div style={{marginBottom:'8px'}}>
+                  <img src={siteSettings.avatar_url} alt="Avatar" style={{width:'80px', height:'80px', objectFit:'cover', border:'3px double var(--border)'}} />
+                </div>
+              )}
+              <input type="file" accept="image/*" onChange={async (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+                const ext = file.name.split('.').pop()
+                const path = `avatar-${Date.now()}.${ext}`
+                const { error } = await supabase.storage.from('photos').upload(path, file)
+                if (!error) {
+                  const { data: u } = supabase.storage.from('photos').getPublicUrl(path)
+                  setSiteSettings({ ...siteSettings, avatar_url: u.publicUrl })
+                  setSaveMsg('✓ Photo uploaded — click Save Settings to apply')
+                }
+              }} style={{ color: 'var(--brown)', fontFamily: 'Courier Prime, monospace', fontSize: '13px' }} />
+              <div style={{fontSize:'11px', color:'var(--sage)', marginTop:'4px'}}>// or paste a URL below</div>
+              <input type="text" value={siteSettings.avatar_url || ''} onChange={e => setSiteSettings({ ...siteSettings, avatar_url: e.target.value })} placeholder="https://... or upload above" style={{marginTop:'6px'}} />
+            </div>
             <div className="field-group"><label>Tagline</label><input type="text" value={siteSettings.tagline || ''} onChange={e => setSiteSettings({ ...siteSettings, tagline: e.target.value })} /></div>
             <div className="field-group"><label>Header Eyebrow</label><input type="text" value={siteSettings.eyebrow || ''} onChange={e => setSiteSettings({ ...siteSettings, eyebrow: e.target.value })} /></div>
             <div className="field-group"><label>About Bio</label><textarea value={siteSettings.bio || ''} onChange={e => setSiteSettings({ ...siteSettings, bio: e.target.value })} rows={5} /></div>
