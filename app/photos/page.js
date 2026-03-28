@@ -4,22 +4,19 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 
-const PLACEHOLDER_COLORS = ['var(--dusty-blue)', 'var(--sage)', 'var(--rust)', 'var(--muted-gold)', 'var(--brown)', 'var(--dusty-blue)']
-
 export default function PhotosPage() {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
 
   useEffect(() => {
+    async function fetchPhotos() {
+      const { data } = await supabase.from('photos').select('*').eq('active', true).order('sort_order')
+      setPhotos(data || [])
+      setLoading(false)
+    }
     fetchPhotos()
   }, [])
-
-  async function fetchPhotos() {
-    // When Supabase Storage is set up, this will pull real photos
-    // For now shows placeholder grid
-    setLoading(false)
-  }
 
   return (
     <>
@@ -73,57 +70,24 @@ export default function PhotosPage() {
           {loading ? (
             <div className="loading-state"><div className="loading-text">// loading photos...</div></div>
           ) : photos.length === 0 ? (
-            <>
-              <div className="photos-coming-soon">
-                <div className="widget" style={{maxWidth:'500px', margin:'0 auto'}}>
-                  <div className="widget-header">Gallery Coming Soon</div>
-                  <div className="widget-body" style={{textAlign:'center', padding:'32px 20px'}}>
-                    <div style={{fontSize:'48px', marginBottom:'16px'}}>📷</div>
-                    <div style={{fontFamily:'Playfair Display, serif', fontSize:'20px', fontStyle:'italic', color:'var(--dark-brown)', marginBottom:'12px'}}>
-                      Photos are on their way
-                    </div>
-                    <div style={{fontSize:'13px', color:'var(--sage)', lineHeight:'1.7'}}>
-                      Currently shooting on a Pentax K1000. Developing at home. 
-                      The gallery will be live once the infrastructure is set up. 
-                      Check back soon.
-                    </div>
-                  </div>
+            <div className="empty-state">
+              <div className="widget" style={{maxWidth:'500px', margin:'0 auto'}}>
+                <div className="widget-header">Gallery Coming Soon</div>
+                <div className="widget-body" style={{textAlign:'center', padding:'32px 20px'}}>
+                  <div style={{fontSize:'48px', marginBottom:'16px'}}>📷</div>
+                  <div style={{fontFamily:'Playfair Display, serif', fontSize:'20px', fontStyle:'italic', color:'var(--dark-brown)', marginBottom:'12px'}}>Photos are on their way</div>
+                  <div style={{fontSize:'13px', color:'var(--sage)', lineHeight:'1.7'}}>Currently shooting on a Pentax K1000. The gallery will be live soon.</div>
                 </div>
               </div>
-
-              <div className="section-head" style={{marginTop:'48px'}}>
-                <div className="section-head-title">Preview Grid</div>
-                <div className="section-head-line"></div>
-              </div>
-
-              <div className="photos-grid">
-                {PLACEHOLDER_COLORS.map((color, i) => (
-                  <div
-                    key={i}
-                    className="photo-grid-item"
-                    style={{background: color}}
-                  >
-                    <div className="photo-grid-overlay">
-                      <span>📷</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="photo-caption">// placeholder grid — real photos coming soon</div>
-            </>
+            </div>
           ) : (
             <>
               <div className="photos-grid">
-                {photos.map((photo, i) => (
-                  <div
-                    key={i}
-                    className="photo-grid-item"
-                    onClick={() => setSelected(photo)}
-                    style={{cursor:'pointer'}}
-                  >
+                {photos.map(photo => (
+                  <div key={photo.id} className="photo-grid-item" onClick={() => setSelected(photo)} style={{cursor:'pointer'}}>
                     <img src={photo.url} alt={photo.caption || ''} style={{width:'100%', height:'100%', objectFit:'cover'}} />
                     <div className="photo-grid-overlay">
-                      <span>{photo.caption}</span>
+                      <span>{photo.caption || '📷'}</span>
                     </div>
                   </div>
                 ))}
