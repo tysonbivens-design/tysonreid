@@ -70,7 +70,10 @@ export default function AboutPage() {
         <div className="about-page">
           <div className="about-hero">
             <div className="about-photo-frame">
-              <div className="about-photo-placeholder">🧑</div>
+              {settings.avatar_url
+                ? <img src={settings.avatar_url} alt="Tyson Reid" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                : <div className="about-photo-placeholder" style={{fontSize:'64px', display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>🧑</div>
+              }
             </div>
             <div className="about-intro">
               <div className="story-kicker">Who I Am</div>
