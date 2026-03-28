@@ -528,7 +528,6 @@
   background: #0f0d08;
   border: 1px solid var(--border);
   border-bottom: none;
-  margin-bottom: 0;
 }
 
 .editor-toolbar button {
@@ -673,3 +672,11 @@
 }
 
 .back-btn:hover { color: var(--brown); border-color: var(--brown); }
+
+/* SETTINGS GRID */
+.settings-grid {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
