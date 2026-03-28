@@ -1,25 +1,22 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-
-const VIDEOS = [
-  {
-    id: 'placeholder1',
-    title: 'I Tried Developing Film for 30 Days',
-    description: 'A month-long experiment with analog photography, a secondhand Pentax K1000, and the patience it takes to not see your photos immediately.',
-    date: 'Jan 20, 2025',
-    youtubeId: '', // paste YouTube video ID here
-  },
-  {
-    id: 'placeholder2',
-    title: 'My Sourdough Journey (Month 3)',
-    description: 'Everything I learned in 90 days of keeping a starter alive and baking bread that actually tastes like something.',
-    date: 'Dec 15, 2024',
-    youtubeId: '',
-  },
-]
+import { supabase } from '../../lib/supabase'
 
 export default function StudioPage() {
+  const [videos, setVideos] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchVideos() {
+      const { data } = await supabase.from('videos').select('*').eq('active', true).order('sort_order')
+      setVideos(data || [])
+      setLoading(false)
+    }
+    fetchVideos()
+  }, [])
+
   return (
     <>
       <div className="ticker-bar">
@@ -75,35 +72,36 @@ export default function StudioPage() {
             <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="section-all">YouTube Channel →</a>
           </div>
 
-          <div className="studio-grid">
-            {VIDEOS.map(video => (
-              <div key={video.id} className="studio-card">
-                {video.youtubeId ? (
-                  <div className="video-embed">
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src={`https://www.youtube.com/embed/${video.youtubeId}`}
-                      title={video.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+          {loading ? (
+            <div className="loading-state"><div className="loading-text">// loading videos...</div></div>
+          ) : videos.length === 0 ? (
+            <div className="empty-state"><div className="empty-text">// videos coming soon.</div></div>
+          ) : (
+            <div className="studio-grid">
+              {videos.map(video => (
+                <div key={video.id} className="studio-card">
+                  {video.youtube_id ? (
+                    <div className="video-embed">
+                      <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${video.youtube_id}`} title={video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </div>
+                  ) : video.video_url ? (
+                    <div className="video-embed">
+                      <video src={video.video_url} controls style={{ width: '100%', height: '100%' }} />
+                    </div>
+                  ) : (
+                    <div className="video-placeholder">
+                      <div className="video-placeholder-icon">▶</div>
+                      <div className="video-placeholder-text">// video coming soon</div>
+                    </div>
+                  )}
+                  <div className="studio-card-body">
+                    <div className="studio-card-title">{video.title}</div>
+                    {video.description && <div className="studio-card-desc">{video.description}</div>}
                   </div>
-                ) : (
-                  <div className="video-placeholder">
-                    <div className="video-placeholder-icon">▶</div>
-                    <div className="video-placeholder-text">// video coming soon</div>
-                  </div>
-                )}
-                <div className="studio-card-body">
-                  <div className="studio-card-date">{video.date}</div>
-                  <div className="studio-card-title">{video.title}</div>
-                  <div className="studio-card-desc">{video.description}</div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="section-head" style={{marginTop:'48px'}}>
             <div className="section-head-title">Current Projects</div>
