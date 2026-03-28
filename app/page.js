@@ -159,7 +159,12 @@ export default function Home() {
             <div className="widget">
               <div className="widget-header">About Me</div>
               <div className="widget-body" style={{textAlign:'center'}}>
-                <div className="avatar-frame">🧑</div>
+                <div className="avatar-frame">
+                  {settings.avatar_url
+                    ? <img src={settings.avatar_url} alt="Tyson Reid" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                    : '🧑'
+                  }
+                </div>
                 <div className="about-bio">{settings.bio || 'A 40-something polymath and serial hobbyist.'}</div>
                 <div className="about-tags">
                   {['writer','hobbyist','culture','food','travel','corporate dystopia'].map(tag => (
