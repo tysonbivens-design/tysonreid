@@ -82,8 +82,13 @@ export async function GET() {
       feeds.map(async (feed) => {
         try {
           const res = await fetch(feed.url, {
-            headers: { 'User-Agent': 'TysonReid/1.0 RSS Reader' },
-            next: { revalidate: 3600 } // cache for 1 hour
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Cache-Control': 'no-cache',
+            },
+            next: { revalidate: 3600 }
           })
           if (!res.ok) return []
           const xml = await res.text()
