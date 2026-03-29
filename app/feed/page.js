@@ -9,38 +9,48 @@ export default function FeedPage() {
   const [feeds, setFeeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('All')
+  const [activeFeed, setActiveFeed] = useState('All')
+  const [lastRefreshed, setLastRefreshed] = useState(null)
 
   useEffect(() => {
     fetchData()
   }, [])
 
   async function fetchData() {
+    setLoading(true)
     const [{ data: feedsData }, feedRes] = await Promise.all([
       supabase.from('rss_feeds').select('*').eq('active', true).order('sort_order'),
       fetch('/api/feed')
     ])
-
     if (feedsData) setFeeds(feedsData)
-
     if (feedRes.ok) {
       const { items } = await feedRes.json()
       setItems(items || [])
     }
+    setLastRefreshed(new Date())
     setLoading(false)
   }
 
-  const categories = ['All', ...new Set(feeds.map(f => f.category))]
-  const filtered = activeCategory === 'All'
-    ? items
-    : items.filter(item => {
-        const feed = feeds.find(f => f.name === item.feedName)
-        return feed?.category === activeCategory
-      })
+  const categories = ['All', ...new Set(feeds.map(f => f.category).filter(Boolean))]
+
+  const filtered = items.filter(item => {
+    const feed = feeds.find(f => f.name === item.feedName)
+    const catMatch = activeCategory === 'All' || feed?.category === activeCategory
+    const feedMatch = activeFeed === 'All' || item.feedName === activeFeed
+    return catMatch && feedMatch
+  })
 
   function formatDate(dateStr) {
     if (!dateStr) return ''
     const d = new Date(dateStr)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const now = new Date()
+    const diff = now - d
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+    if (hours < 1) return 'just now'
+    if (hours < 24) return `${hours}h ago`
+    if (days < 7) return `${days}d ago`
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   return (
@@ -48,10 +58,10 @@ export default function FeedPage() {
       <div className="ticker-bar">
         <div className="ticker-label">★ LIVE ★</div>
         <div className="ticker-track">
-          <span>Your curated feed — no algorithm, just sources you chose</span>
-          <span>Updated hourly from RSS feeds you trust</span>
-          <span>Your curated feed — no algorithm, just sources you chose</span>
-          <span>Updated hourly from RSS feeds you trust</span>
+          <span>Your curated feed — updated hourly from sources you trust</span>
+          <span>No algorithm. No engagement bait. Just signal.</span>
+          <span>Your curated feed — updated hourly from sources you trust</span>
+          <span>No algorithm. No engagement bait. Just signal.</span>
         </div>
       </div>
 
@@ -68,8 +78,10 @@ export default function FeedPage() {
             <div className="site-tagline">Presence is resistance. Curation is revolutionary.</div>
           </div>
           <div className="header-meta-right">
-            <div>EST. 2025</div>
             <div>THE FEED</div>
+            <div style={{fontFamily:'VT323, monospace', fontSize:'14px', color:'var(--sage)', marginTop:'4px'}}>
+              {lastRefreshed ? `Updated ${formatDate(lastRefreshed.toISOString())}` : ''}
+            </div>
           </div>
         </div>
         <nav>
@@ -77,6 +89,8 @@ export default function FeedPage() {
           <Link href="/writing">[ WRITING ]</Link>
           <Link href="/studio">[ STUDIO ]</Link>
           <Link href="/photos">[ PHOTOS ]</Link>
+          <Link href="/links">[ LINKS ]</Link>
+          <Link href="/feed" className="active">[ FEED ]</Link>
           <Link href="/about">[ ABOUT ]</Link>
           <Link href="/guestbook">[ GUESTBOOK ]</Link>
           <Link href="/now" className="nav-now">NOW PAGE</Link>
@@ -84,92 +98,187 @@ export default function FeedPage() {
       </header>
 
       <div className="page-wrapper">
-        <div className="date-banner">✦ THE FEED · Curated RSS · Updated Hourly · No Algorithm ✦</div>
+        <div className="date-banner">
+          ✦ CURATED FEED · {filtered.length} items · {feeds.length} sources · Updated hourly · No Algorithm ✦
+        </div>
 
-        <div className="feed-page">
-          <div className="feed-layout">
+        <div className="main-grid" style={{gridTemplateColumns:'220px 1fr'}}>
 
-            {/* FEED LIST */}
-            <div className="feed-main">
-              <div className="feed-header">
-                <h1 className="writing-title">The Feed</h1>
-                <p className="writing-subtitle">
-                  A river of content from sources I actually trust. Curated by hand.
-                  Delivered by RSS. No engagement metrics. No outrage bait.
-                </p>
+          {/* LEFT SIDEBAR — sources + filters */}
+          <aside className="sidebar-left">
+
+            <div className="widget">
+              <div className="widget-header">Sources</div>
+              <div className="widget-body" style={{padding:'8px 0'}}>
+                <button
+                  onClick={() => { setActiveFeed('All'); setActiveCategory('All') }}
+                  style={{
+                    display:'block', width:'100%', textAlign:'left',
+                    padding:'8px 14px', background: activeFeed === 'All' ? '#2a2018' : 'transparent',
+                    border:'none', borderLeft: activeFeed === 'All' ? '3px solid var(--amber)' : '3px solid transparent',
+                    color: activeFeed === 'All' ? 'var(--amber)' : 'var(--brown)',
+                    fontFamily:'Space Mono, monospace', fontSize:'10px', fontWeight:'700',
+                    textTransform:'uppercase', letterSpacing:'2px', cursor:'pointer'
+                  }}
+                >
+                  All Sources ({items.length})
+                </button>
+                {feeds.map(feed => {
+                  const count = items.filter(i => i.feedName === feed.name).length
+                  return (
+                    <button
+                      key={feed.id}
+                      onClick={() => { setActiveFeed(feed.name); setActiveCategory('All') }}
+                      style={{
+                        display:'flex', alignItems:'center', gap:'8px', width:'100%', textAlign:'left',
+                        padding:'8px 14px', background: activeFeed === feed.name ? '#2a2018' : 'transparent',
+                        border:'none', borderLeft: activeFeed === feed.name ? '3px solid var(--amber)' : '3px solid transparent',
+                        cursor:'pointer', transition:'all 0.15s'
+                      }}
+                    >
+                      <div style={{width:'8px', height:'8px', borderRadius:'50%', background:feed.color, flexShrink:0}}></div>
+                      <span style={{
+                        fontFamily:'Courier Prime, monospace', fontSize:'12px',
+                        color: activeFeed === feed.name ? 'var(--dark-brown)' : 'var(--brown)',
+                        flex:1, textAlign:'left', lineHeight:'1.3'
+                      }}>{feed.name}</span>
+                      <span style={{fontFamily:'VT323, monospace', fontSize:'14px', color:'var(--sage)'}}>{count}</span>
+                    </button>
+                  )
+                })}
               </div>
+            </div>
 
-              <div className="category-filter">
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
-                    onClick={() => setActiveCategory(cat)}
+            {categories.length > 1 && (
+              <div className="widget">
+                <div className="widget-header">Categories</div>
+                <div className="widget-body" style={{padding:'8px 0'}}>
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => { setActiveCategory(cat); setActiveFeed('All') }}
+                      style={{
+                        display:'block', width:'100%', textAlign:'left',
+                        padding:'7px 14px', background: activeCategory === cat && activeFeed === 'All' ? '#2a2018' : 'transparent',
+                        border:'none', borderLeft: activeCategory === cat && activeFeed === 'All' ? '3px solid var(--rust)' : '3px solid transparent',
+                        color: activeCategory === cat && activeFeed === 'All' ? 'var(--rust)' : 'var(--sage)',
+                        fontFamily:'VT323, monospace', fontSize:'15px', letterSpacing:'2px',
+                        textTransform:'uppercase', cursor:'pointer'
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="widget">
+              <div className="widget-header">About This Feed</div>
+              <div className="widget-body" style={{fontSize:'12px', color:'var(--brown)', lineHeight:'1.7'}}>
+                <p style={{marginBottom:'10px'}}>A personal river of news from sources I actually trust. Curated by hand, delivered by RSS.</p>
+                <p style={{marginBottom:'10px'}}>No engagement metrics. No outrage bait. No algorithm deciding what matters.</p>
+                <p>Add sources in <Link href="/admin" style={{color:'var(--link-blue)'}}>Admin → RSS Feeds</Link>.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              style={{
+                width:'100%', background:'transparent', border:'1px solid var(--border)',
+                color:'var(--sage)', fontFamily:'Space Mono, monospace', fontSize:'10px',
+                fontWeight:'700', textTransform:'uppercase', letterSpacing:'2px',
+                padding:'10px', cursor:'pointer', transition:'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--amber)'; e.currentTarget.style.color = 'var(--amber)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--sage)' }}
+            >
+              {loading ? '// refreshing...' : '↻ Refresh Feed'}
+            </button>
+
+          </aside>
+
+          {/* MAIN — feed items */}
+          <main className="main-content" style={{borderRight:'none'}}>
+
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', paddingBottom:'12px', borderBottom:'1px solid var(--border)'}}>
+              <div style={{fontFamily:'Space Mono, monospace', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'3px', color:'var(--brown)'}}>
+                {activeFeed !== 'All' ? activeFeed : activeCategory !== 'All' ? activeCategory : 'All Sources'}
+              </div>
+              <div style={{fontFamily:'VT323, monospace', fontSize:'15px', color:'var(--sage)'}}>
+                {filtered.length} items
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{padding:'60px 0', textAlign:'center'}}>
+                <div style={{fontFamily:'VT323, monospace', fontSize:'20px', color:'var(--sage)', letterSpacing:'2px'}}>
+                  // fetching the feed...
+                </div>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{padding:'60px 0', textAlign:'center'}}>
+                <div style={{fontFamily:'VT323, monospace', fontSize:'20px', color:'var(--sage)', letterSpacing:'2px'}}>
+                  // nothing here yet — add RSS feeds in admin.
+                </div>
+              </div>
+            ) : (
+              <div>
+                {filtered.map((item, i) => (
+                  <a
+                    key={i}
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display:'block', padding:'18px 0',
+                      borderBottom:'1px solid var(--border)',
+                      textDecoration:'none', transition:'padding-left 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.paddingLeft = '8px'}
+                    onMouseLeave={e => e.currentTarget.style.paddingLeft = '0'}
                   >
-                    {cat}
-                  </button>
+                    <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
+                      <div style={{width:'8px', height:'8px', borderRadius:'50%', background: item.feedColor, flexShrink:0}}></div>
+                      <span style={{
+                        fontFamily:'Space Mono, monospace', fontSize:'9px', fontWeight:'700',
+                        textTransform:'uppercase', letterSpacing:'2px', color:'var(--sage)'
+                      }}>{item.feedName}</span>
+                      <span style={{
+                        fontFamily:'VT323, monospace', fontSize:'14px',
+                        color:'var(--border)', marginLeft:'auto'
+                      }}>{formatDate(item.date)}</span>
+                    </div>
+
+                    <div style={{
+                      fontFamily:'Playfair Display, serif', fontSize:'22px', fontWeight:'700',
+                      color:'var(--dark-brown)', lineHeight:'1.2', marginBottom:'8px'
+                    }}>
+                      {item.title}
+                    </div>
+
+                    {item.description && (
+                      <div style={{
+                        fontSize:'13px', color:'var(--brown)', lineHeight:'1.7',
+                        maxWidth:'680px'
+                      }}>
+                        {item.description}...
+                      </div>
+                    )}
+
+                    <div style={{
+                      marginTop:'8px', fontFamily:'Space Mono, monospace',
+                      fontSize:'10px', color:'var(--sage)', letterSpacing:'1px'
+                    }}>
+                      READ → {item.link.replace('https://', '').replace('http://', '').split('/')[0]}
+                    </div>
+                  </a>
                 ))}
               </div>
+            )}
+          </main>
 
-              {loading ? (
-                <div className="loading-state"><div className="loading-text">// fetching feed...</div></div>
-              ) : filtered.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-text">// no items yet — add RSS feeds in admin.</div>
-                </div>
-              ) : (
-                <div className="feed-items">
-                  {filtered.map((item, i) => (
-                    <a
-                      key={i}
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="feed-item"
-                    >
-                      <div className="feed-item-source">
-                        <span className="feed-dot" style={{background: item.feedColor}}></span>
-                        {item.feedName}
-                      </div>
-                      <div className="feed-item-title">{item.title}</div>
-                      {item.description && (
-                        <div className="feed-item-desc">{item.description}...</div>
-                      )}
-                      <div className="feed-item-date">{formatDate(item.date)}</div>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* SIDEBAR - sources list */}
-            <div className="feed-sidebar">
-              <div className="widget">
-                <div className="widget-header">Sources</div>
-                <div className="widget-body">
-                  {feeds.map(feed => (
-                    <div key={feed.id} className="rss-item">
-                      <div className="rss-dot" style={{background: feed.color}}></div>
-                      <span style={{flex:1, fontSize:'13px', color:'var(--brown)'}}>{feed.name}</span>
-                      <span style={{fontFamily:'VT323, monospace', fontSize:'13px', color:'var(--sage)'}}>{feed.category}</span>
-                    </div>
-                  ))}
-                  <div style={{marginTop:'14px', paddingTop:'14px', borderTop:'1px dashed var(--border)', fontSize:'12px', color:'var(--sage)', lineHeight:'1.6'}}>
-                    // Want to suggest a source? <Link href="/guestbook" style={{color:'var(--link-blue)'}}>Leave a note</Link> in the guestbook.
-                  </div>
-                </div>
-              </div>
-
-              <div className="widget">
-                <div className="widget-header">What is RSS?</div>
-                <div className="widget-body" style={{fontSize:'12px', color:'var(--brown)', lineHeight:'1.7'}}>
-                  <p style={{marginBottom:'10px'}}>RSS is an open standard that lets websites publish their content in a format any reader can consume — without a platform in the middle.</p>
-                  <p>This feed pulls directly from the sources above, updated hourly. No tracking. No ads. Just the content.</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
         </div>
       </div>
 
