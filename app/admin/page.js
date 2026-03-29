@@ -363,6 +363,7 @@ export default function AdminPage() {
         <div className="admin-content">
           <div className="admin-section-header"><h2>Site Settings</h2></div>
           <div className="settings-grid">
+
             <div className="field-group">
               <label>Profile Photo</label>
               {siteSettings.avatar_url && (
@@ -383,12 +384,34 @@ export default function AdminPage() {
                 }
               }} style={{ color: 'var(--brown)', fontFamily: 'Courier Prime, monospace', fontSize: '13px' }} />
               <div style={{fontSize:'11px', color:'var(--sage)', marginTop:'4px'}}>// or paste a URL below</div>
-              <input type="text" value={siteSettings.avatar_url || ''} onChange={e => setSiteSettings({ ...siteSettings, avatar_url: e.target.value })} placeholder="https://... or upload above" style={{marginTop:'6px'}} />
+              <input type="text" value={siteSettings.avatar_url || ''} onChange={e => setSiteSettings({ ...siteSettings, avatar_url: e.target.value })} placeholder="https://..." style={{marginTop:'6px'}} />
             </div>
-            <div className="field-group"><label>Tagline</label><input type="text" value={siteSettings.tagline || ''} onChange={e => setSiteSettings({ ...siteSettings, tagline: e.target.value })} /></div>
-            <div className="field-group"><label>Header Eyebrow</label><input type="text" value={siteSettings.eyebrow || ''} onChange={e => setSiteSettings({ ...siteSettings, eyebrow: e.target.value })} /></div>
-            <div className="field-group"><label>About Bio</label><textarea value={siteSettings.bio || ''} onChange={e => setSiteSettings({ ...siteSettings, bio: e.target.value })} rows={5} /></div>
+
+            <div className="field-group"><label>Tagline</label><input type="text" value={siteSettings.tagline || ''} onChange={e => setSiteSettings({ ...siteSettings, tagline: e.target.value })} placeholder="Presence is resistance. Curation is revolutionary." /></div>
+            <div className="field-group"><label>Header Eyebrow</label><input type="text" value={siteSettings.eyebrow || ''} onChange={e => setSiteSettings({ ...siteSettings, eyebrow: e.target.value })} placeholder="Welcome to" /></div>
+            <div className="field-group"><label>About Bio (sidebar + about page)</label><textarea value={siteSettings.bio || ''} onChange={e => setSiteSettings({ ...siteSettings, bio: e.target.value })} rows={5} placeholder="Your bio..." /></div>
             <div className="field-group"><label>Footer About Text</label><textarea value={siteSettings.footer_about || ''} onChange={e => setSiteSettings({ ...siteSettings, footer_about: e.target.value })} rows={3} /></div>
+
+            <div className="field-group">
+              <label>About Me Tags</label>
+              <input type="text" value={siteSettings.tags || ''} onChange={e => setSiteSettings({ ...siteSettings, tags: e.target.value })} placeholder="writer,hobbyist,culture,food,travel" />
+              <div style={{fontSize:'11px', color:'var(--sage)', marginTop:'4px'}}>// comma-separated list</div>
+            </div>
+
+            <div className="field-group"><label>Email Address</label><input type="text" value={siteSettings.email_address || ''} onChange={e => setSiteSettings({ ...siteSettings, email_address: e.target.value })} placeholder="you@yourdomain.com" /></div>
+            <div className="field-group"><label>YouTube URL</label><input type="text" value={siteSettings.youtube_url || ''} onChange={e => setSiteSettings({ ...siteSettings, youtube_url: e.target.value })} placeholder="https://youtube.com/@yourchannel" /></div>
+            <div className="field-group"><label>RSS URL</label><input type="text" value={siteSettings.rss_url || ''} onChange={e => setSiteSettings({ ...siteSettings, rss_url: e.target.value })} placeholder="/rss" /></div>
+
+            <div style={{borderTop:'1px solid var(--border)', paddingTop:'16px'}}>
+              <div style={{fontFamily:'Space Mono, monospace', fontSize:'10px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'2px', color:'var(--sage)', marginBottom:'12px'}}>Webring Links</div>
+              <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
+                <div className="field-group"><label>Webring Name</label><input type="text" value={siteSettings.webring_name || ''} onChange={e => setSiteSettings({ ...siteSettings, webring_name: e.target.value })} placeholder="personal websites webring" /></div>
+                <div className="field-group"><label>Previous Site URL</label><input type="text" value={siteSettings.webring_prev_url || ''} onChange={e => setSiteSettings({ ...siteSettings, webring_prev_url: e.target.value })} placeholder="https://..." /></div>
+                <div className="field-group"><label>Next Site URL</label><input type="text" value={siteSettings.webring_next_url || ''} onChange={e => setSiteSettings({ ...siteSettings, webring_next_url: e.target.value })} placeholder="https://..." /></div>
+                <div className="field-group"><label>Join Webring URL</label><input type="text" value={siteSettings.webring_join_url || ''} onChange={e => setSiteSettings({ ...siteSettings, webring_join_url: e.target.value })} placeholder="https://..." /></div>
+              </div>
+            </div>
+
             {saveMsg && <div className="save-msg">{saveMsg}</div>}
             <button onClick={saveSiteSettings} disabled={saving} className="publish-btn">{saving ? 'Saving...' : '✓ Save Settings'}</button>
           </div>
