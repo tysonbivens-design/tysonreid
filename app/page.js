@@ -4,6 +4,71 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 
+function FeedWidget() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/feed')
+      .then(r => r.json())
+      .then(({ items }) => { setItems((items || []).slice(0, 8)); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  function formatDate(d) {
+    if (!d) return ''
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  if (loading) return (
+    <div style={{padding:'14px', fontFamily:'VT323, monospace', fontSize:'14px', color:'var(--sage)', letterSpacing:'1px'}}>
+      // fetching...
+    </div>
+  )
+
+  if (items.length === 0) return (
+    <div style={{padding:'14px', fontFamily:'VT323, monospace', fontSize:'14px', color:'var(--sage)'}}>
+      // no items yet — add RSS feeds in admin.
+    </div>
+  )
+
+  return (
+    <div>
+      {items.map((item, i) => (
+        <a
+          key={i}
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display:'block',
+            padding:'10px 14px',
+            borderBottom:'1px dashed var(--border)',
+            textDecoration:'none',
+            transition:'background 0.15s'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1f1a12'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{display:'flex', alignItems:'center', gap:'6px', marginBottom:'4px'}}>
+            <div style={{width:'6px', height:'6px', borderRadius:'50%', background: item.feedColor, flexShrink:0}}></div>
+            <span style={{fontFamily:'Space Mono, monospace', fontSize:'9px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'1px', color:'var(--sage)'}}>{item.feedName}</span>
+            <span style={{fontFamily:'VT323, monospace', fontSize:'13px', color:'var(--border)', marginLeft:'auto'}}>{formatDate(item.date)}</span>
+          </div>
+          <div style={{fontFamily:'Playfair Display, serif', fontSize:'14px', fontWeight:'700', color:'var(--dark-brown)', lineHeight:'1.3'}}>
+            {item.title}
+          </div>
+        </a>
+      ))}
+      <div style={{padding:'10px 14px', textAlign:'center', borderTop:'1px solid var(--border)'}}>
+        <Link href="/feed" style={{fontFamily:'VT323, monospace', fontSize:'14px', color:'var(--link-blue)', textDecoration:'none', letterSpacing:'1px'}}>
+          [ open full feed ]
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const [fname, setFname] = useState('')
   const [email, setEmail] = useState('')
@@ -359,18 +424,9 @@ export default function Home() {
 
             {rssFeeds.length > 0 && (
               <div className="widget">
-                <div className="widget-header">My Reading List</div>
-                <div className="widget-body">
-                  {rssFeeds.slice(0, 6).map(feed => (
-                    <div className="rss-item" key={feed.id}>
-                      <div className="rss-dot" style={{background: feed.color}}></div>
-                      <a href={feed.url.replace('/feed', '').replace('/rss.xml', '').replace('/feed.xml', '')} target="_blank" rel="noopener noreferrer">{feed.name}</a>
-                      <span className="rss-count">{feed.category}</span>
-                    </div>
-                  ))}
-                  <div style={{textAlign:'center', marginTop:'10px'}}>
-                    <Link href="/feed" className="webring-join">[ view full feed ]</Link>
-                  </div>
+                <div className="widget-header">Curated Feed</div>
+                <div className="widget-body" style={{padding:'0'}}>
+                  <FeedWidget />
                 </div>
               </div>
             )}
