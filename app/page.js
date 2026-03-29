@@ -107,7 +107,7 @@ export default function Home() {
   }
   function readTime(post) { return Math.max(1, Math.ceil(stripHtml(post.content || '').split(' ').length / 200)) }
 
-  const gridPosts = posts.filter(p => !featuredPost || p.id !== featuredPost.id).slice(0, 4)
+  const gridPosts = posts.slice(0, 4)
 
   // Get first two paragraphs of featured post for preview
   function getFeaturedPreview(post) {
