@@ -6,15 +6,20 @@ import { supabase } from '../../lib/supabase'
 
 export default function StudioPage() {
   const [videos, setVideos] = useState([])
+  const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchVideos() {
-      const { data } = await supabase.from('videos').select('*').eq('active', true).order('sort_order')
-      setVideos(data || [])
+    async function fetchData() {
+      const [{ data: videosData }, { data: projectsData }] = await Promise.all([
+        supabase.from('videos').select('*').eq('active', true).order('sort_order'),
+        supabase.from('projects').select('*').eq('active', true).order('sort_order')
+      ])
+      setVideos(videosData || [])
+      setProjects(projectsData || [])
       setLoading(false)
     }
-    fetchVideos()
+    fetchData()
   }, [])
 
   return (
@@ -69,11 +74,11 @@ export default function StudioPage() {
           <div className="section-head">
             <div className="section-head-title">Recent Videos</div>
             <div className="section-head-line double"></div>
-            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="section-all">YouTube Channel →</a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="section-all">YouTube Channel →</a>
           </div>
 
           {loading ? (
-            <div className="loading-state"><div className="loading-text">// loading videos...</div></div>
+            <div className="loading-state"><div className="loading-text">// loading...</div></div>
           ) : videos.length === 0 ? (
             <div className="empty-state"><div className="empty-text">// videos coming soon.</div></div>
           ) : (
@@ -86,7 +91,7 @@ export default function StudioPage() {
                     </div>
                   ) : video.video_url ? (
                     <div className="video-embed">
-                      <video src={video.video_url} controls style={{ width: '100%', height: '100%' }} />
+                      <video src={video.video_url} controls style={{width:'100%', height:'100%'}} />
                     </div>
                   ) : (
                     <div className="video-placeholder">
@@ -103,26 +108,29 @@ export default function StudioPage() {
             </div>
           )}
 
-          <div className="section-head" style={{marginTop:'48px'}}>
-            <div className="section-head-title">Current Projects</div>
-            <div className="section-head-line double"></div>
-          </div>
-
-          <div className="projects-grid">
-            {[
-              { icon: '📷', name: 'Analog Photography', status: 'Active', desc: 'Shooting on a Pentax K1000. Developing at home. Learning to slow down.' },
-              { icon: '🍞', name: 'Sourdough', status: 'Active', desc: 'Month 3 of keeping a starter alive. The bread is getting better.' },
-              { icon: '🎬', name: 'YouTube Channel', status: 'Active', desc: 'Amateur videos about hobbies, culture, and the slow life.' },
-              { icon: '✍️', name: 'This Website', status: 'Always Building', desc: 'An ongoing experiment in owning your corner of the internet.' },
-            ].map(project => (
-              <div key={project.name} className="project-card">
-                <div className="project-icon">{project.icon}</div>
-                <div className="project-status">{project.status}</div>
-                <div className="project-name">{project.name}</div>
-                <div className="project-desc">{project.desc}</div>
+          {projects.length > 0 && (
+            <>
+              <div className="section-head" style={{marginTop:'48px'}}>
+                <div className="section-head-title">Current Projects</div>
+                <div className="section-head-line double"></div>
               </div>
-            ))}
-          </div>
+              <div className="projects-grid">
+                {projects.map(project => (
+                  <div
+                    key={project.id}
+                    className="project-card"
+                    onClick={() => project.url && window.open(project.url, '_blank')}
+                    style={{cursor: project.url ? 'pointer' : 'default'}}
+                  >
+                    <div className="project-icon">{project.icon}</div>
+                    <div className="project-status">{project.status}</div>
+                    <div className="project-name">{project.name}</div>
+                    {project.description && <div className="project-desc">{project.description}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -130,7 +138,7 @@ export default function StudioPage() {
         <div className="footer-bottom" style={{maxWidth:'1200px', margin:'0 auto'}}>
           <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality</div>
           <Link href="/" style={{color:'var(--muted-gold)', fontFamily:'VT323, monospace', fontSize:'16px', textDecoration:'none'}}>← Back to Home</Link>
-          <div>© 2025 Tyson Reid</div>
+          <div>© {new Date().getFullYear()} Tyson Reid</div>
         </div>
       </footer>
     </>
