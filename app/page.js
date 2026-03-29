@@ -18,6 +18,7 @@ export default function Home() {
   const [subCount, setSubCount] = useState(null)
   const [recentPhotos, setRecentPhotos] = useState([])
   const [guestbookPreviews, setGuestbookPreviews] = useState([])
+  const [rssFeeds, setRssFeeds] = useState([])
 
   useEffect(() => { fetchAll(); trackVisit() }, [])
 
@@ -32,7 +33,8 @@ export default function Home() {
       { count: vCount },
       { count: sCount },
       { data: photosData },
-      { data: guestbookData }
+      { data: guestbookData },
+      { data: rssFeedsData }
     ] = await Promise.all([
       supabase.from('ticker_items').select('*').eq('active', true).order('sort_order'),
       supabase.from('manifesto_items').select('*').order('sort_order'),
@@ -43,7 +45,8 @@ export default function Home() {
       supabase.from('visitors').select('*', { count: 'exact', head: true }),
       supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('photos').select('*').eq('active', true).order('sort_order').limit(4),
-      supabase.from('guestbook').select('*').order('created_at', { ascending: false }).limit(2)
+      supabase.from('guestbook').select('*').order('created_at', { ascending: false }).limit(2),
+      supabase.from('rss_feeds').select('*').eq('active', true).order('sort_order')
     ])
 
     if (tickerData) setTickerItems(tickerData)
@@ -55,6 +58,7 @@ export default function Home() {
     if (sCount !== null) setSubCount(sCount)
     if (photosData) setRecentPhotos(photosData)
     if (guestbookData) setGuestbookPreviews(guestbookData)
+    if (rssFeedsData) setRssFeeds(rssFeedsData)
     if (settingsData) {
       const s = {}
       settingsData.forEach(row => { s[row.key] = row.value })
@@ -152,6 +156,8 @@ export default function Home() {
           <Link href="/writing">[ WRITING ]</Link>
           <Link href="/studio">[ STUDIO ]</Link>
           <Link href="/photos">[ PHOTOS ]</Link>
+          <Link href="/links">[ LINKS ]</Link>
+          <Link href="/feed">[ FEED ]</Link>
           <Link href="/about">[ ABOUT ]</Link>
           <Link href="/guestbook">[ GUESTBOOK ]</Link>
           <Link href="/now" className="nav-now">NOW PAGE</Link>
@@ -351,6 +357,24 @@ export default function Home() {
               </div>
             )}
 
+            {rssFeeds.length > 0 && (
+              <div className="widget">
+                <div className="widget-header">My Reading List</div>
+                <div className="widget-body">
+                  {rssFeeds.slice(0, 6).map(feed => (
+                    <div className="rss-item" key={feed.id}>
+                      <div className="rss-dot" style={{background: feed.color}}></div>
+                      <a href={feed.url.replace('/feed', '').replace('/rss.xml', '').replace('/feed.xml', '')} target="_blank" rel="noopener noreferrer">{feed.name}</a>
+                      <span className="rss-count">{feed.category}</span>
+                    </div>
+                  ))}
+                  <div style={{textAlign:'center', marginTop:'10px'}}>
+                    <Link href="/feed" className="webring-join">[ view full feed ]</Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="widget">
               <div className="widget-header">Guestbook</div>
               <div className="widget-body">
@@ -404,13 +428,14 @@ export default function Home() {
             <ul className="footer-links">
               <li><a href={settings.email_address ? `mailto:${settings.email_address}` : '#'}>Email Me</a></li>
               <li><Link href="/guestbook">Guestbook</Link></li>
-              <li><a href={settings.rss_url || '#'}>RSS Feed</a></li>
+              <li><Link href="/links">Favorite Links</Link></li>
+              <li><Link href="/feed">Curated Feed</Link></li>
               <li><a href={settings.webring_join_url || '#'}>Join the Webring</a></li>
             </ul>
           </div>
         </div>
         <div className="footer-bottom">
-          <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality — no VC funding, no ads, no tracking</div>
+          <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality</div>
           <div className="webring-footer">◀ <a href={settings.webring_prev_url || '#'}>prev</a> · IndieWeb Ring · <a href={settings.webring_next_url || '#'}>next</a> ▶</div>
           <div>© {new Date().getFullYear()} Tyson Reid · All rights reserved</div>
         </div>
