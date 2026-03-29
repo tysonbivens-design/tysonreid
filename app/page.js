@@ -84,6 +84,8 @@ export default function Home() {
   const [recentPhotos, setRecentPhotos] = useState([])
   const [guestbookPreviews, setGuestbookPreviews] = useState([])
   const [rssFeeds, setRssFeeds] = useState([])
+  const [webringLinks, setWebringLinks] = useState([])
+  const [webringIndex, setWebringIndex] = useState(0)
 
   useEffect(() => { fetchAll(); trackVisit() }, [])
 
@@ -99,7 +101,8 @@ export default function Home() {
       { count: sCount },
       { data: photosData },
       { data: guestbookData },
-      { data: rssFeedsData }
+      { data: rssFeedsData },
+      { data: linksData }
     ] = await Promise.all([
       supabase.from('ticker_items').select('*').eq('active', true).order('sort_order'),
       supabase.from('manifesto_items').select('*').order('sort_order'),
@@ -111,7 +114,8 @@ export default function Home() {
       supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('photos').select('*').eq('active', true).order('sort_order').limit(4),
       supabase.from('guestbook').select('*').order('created_at', { ascending: false }).limit(2),
-      supabase.from('rss_feeds').select('*').eq('active', true).order('sort_order')
+      supabase.from('rss_feeds').select('*').eq('active', true).order('sort_order'),
+      supabase.from('links').select('*').eq('active', true).order('sort_order')
     ])
 
     if (tickerData) setTickerItems(tickerData)
@@ -124,6 +128,7 @@ export default function Home() {
     if (photosData) setRecentPhotos(photosData)
     if (guestbookData) setGuestbookPreviews(guestbookData)
     if (rssFeedsData) setRssFeeds(rssFeedsData)
+    if (linksData) { setWebringLinks(linksData); setWebringIndex(Math.floor(Math.random() * linksData.length)) }
     if (settingsData) {
       const s = {}
       settingsData.forEach(row => { s[row.key] = row.value })
@@ -286,14 +291,49 @@ export default function Home() {
             <div className="widget">
               <div className="widget-header">IndieWeb Ring</div>
               <div className="widget-body">
-                <div className="webring">
-                  <a href={settings.webring_prev_url || '#'}>◀ prev</a>
-                  <div className="webring-name">✦<br/>{(settings.webring_name || 'personal websites webring').split(' ').join('<br/>')}<br/>✦</div>
-                  <a href={settings.webring_next_url || '#'}>next ▶</a>
-                </div>
-                <div style={{textAlign:'center', marginTop:'10px'}}>
-                  <a href={settings.webring_join_url || '#'} className="webring-join">[ join the ring ]</a>
-                </div>
+                {webringLinks.length > 0 ? (
+                  <>
+                    <div className="webring">
+                      <button
+                        onClick={() => setWebringIndex(i => (i - 1 + webringLinks.length) % webringLinks.length)}
+                        style={{background:'none', border:'1px solid var(--border)', color:'var(--link-blue)', fontFamily:'VT323, monospace', fontSize:'15px', padding:'2px 6px', cursor:'pointer'}}
+                      >◀ prev</button>
+                      <div className="webring-name" style={{textAlign:'center', fontSize:'11px', lineHeight:'1.5', color:'var(--sage)', padding:'0 6px'}}>
+                        ✦<br/>
+                        <span style={{fontFamily:'Playfair Display, serif', fontStyle:'italic', fontSize:'13px', color:'var(--dark-brown)'}}>
+                          {webringLinks[webringIndex]?.name}
+                        </span>
+                        <br/>✦
+                      </div>
+                      <button
+                        onClick={() => setWebringIndex(i => (i + 1) % webringLinks.length)}
+                        style={{background:'none', border:'1px solid var(--border)', color:'var(--link-blue)', fontFamily:'VT323, monospace', fontSize:'15px', padding:'2px 6px', cursor:'pointer'}}
+                      >next ▶</button>
+                    </div>
+                    <div style={{textAlign:'center', marginTop:'8px'}}>
+                      <a
+                        href={webringLinks[webringIndex]?.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="webring-join"
+                      >[ visit this site ]</a>
+                    </div>
+                    <div style={{textAlign:'center', marginTop:'6px'}}>
+                      <Link href="/links" className="webring-join">[ view all links ]</Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="webring">
+                      <a href="/links">◀ prev</a>
+                      <div className="webring-name">✦<br/>personal<br/>websites<br/>✦</div>
+                      <a href="/links">next ▶</a>
+                    </div>
+                    <div style={{textAlign:'center', marginTop:'10px'}}>
+                      <Link href="/links" className="webring-join">[ view all links ]</Link>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </aside>
@@ -492,7 +532,13 @@ export default function Home() {
         </div>
         <div className="footer-bottom">
           <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality</div>
-          <div className="webring-footer">◀ <a href={settings.webring_prev_url || '#'}>prev</a> · IndieWeb Ring · <a href={settings.webring_next_url || '#'}>next</a> ▶</div>
+          <div className="webring-footer">
+            ◀ <a href={webringLinks.length > 0 ? webringLinks[(webringIndex - 1 + webringLinks.length) % webringLinks.length]?.url : '/links'}>prev</a>
+            {' · '}
+            <Link href="/links" style={{color:'var(--muted-gold)', textDecoration:'none'}}>IndieWeb Ring</Link>
+            {' · '}
+            <a href={webringLinks.length > 0 ? webringLinks[(webringIndex + 1) % webringLinks.length]?.url : '/links'}>next</a> ▶
+          </div>
           <div>© {new Date().getFullYear()} Tyson Reid · All rights reserved</div>
         </div>
       </footer>
