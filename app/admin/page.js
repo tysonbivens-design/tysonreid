@@ -54,6 +54,31 @@ export default function AdminPage() {
   const [videos, setVideos] = useState([])
   const [photos, setPhotos] = useState([])
   const [guestbookEntries, setGuestbookEntries] = useState([])
+  const [projects, setProjects] = useState([])
+  const [links, setLinks] = useState([])
+  const [rssFeeds, setRssFeeds] = useState([])
+
+  // Project form
+  const [projectName, setProjectName] = useState('')
+  const [projectDesc, setProjectDesc] = useState('')
+  const [projectIcon, setProjectIcon] = useState('✦')
+  const [projectStatus, setProjectStatus] = useState('Active')
+  const [projectUrl, setProjectUrl] = useState('')
+  const [editingProject, setEditingProject] = useState(null)
+
+  // Link form
+  const [linkName, setLinkName] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkDesc, setLinkDesc] = useState('')
+  const [linkCategory, setLinkCategory] = useState('Favorites')
+  const [editingLink, setEditingLink] = useState(null)
+
+  // RSS feed form
+  const [feedName, setFeedName] = useState('')
+  const [feedUrl, setFeedUrl] = useState('')
+  const [feedCategory, setFeedCategory] = useState('General')
+  const [feedColor, setFeedColor] = useState('#7aa4c8')
+  const [editingFeed, setEditingFeed] = useState(null)
 
   const [editingPost, setEditingPost] = useState(null)
   const [title, setTitle] = useState('')
@@ -99,7 +124,7 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (session) { fetchPosts(); fetchSubscribers(); fetchNowPage(); fetchTickerItems(); fetchManifestoItems(); fetchSiteSettings(); fetchVideos(); fetchPhotos(); fetchGuestbook() }
+    if (session) { fetchPosts(); fetchSubscribers(); fetchNowPage(); fetchTickerItems(); fetchManifestoItems(); fetchSiteSettings(); fetchVideos(); fetchPhotos(); fetchGuestbook(); fetchProjects(); fetchLinks(); fetchRssFeeds() }
   }, [session])
 
   useEffect(() => { if (!editingPost && title) setSlug(slugify(title)) }, [title, editingPost])
@@ -116,6 +141,61 @@ export default function AdminPage() {
   async function fetchVideos() { const { data } = await supabase.from('videos').select('*').order('sort_order'); setVideos(data || []) }
   async function fetchPhotos() { const { data } = await supabase.from('photos').select('*').order('sort_order'); setPhotos(data || []) }
   async function fetchGuestbook() { const { data } = await supabase.from('guestbook').select('*').order('created_at', { ascending: false }); setGuestbookEntries(data || []) }
+
+  async function fetchProjects() { const { data } = await supabase.from('projects').select('*').order('sort_order'); setProjects(data || []) }
+  async function fetchLinks() { const { data } = await supabase.from('links').select('*').order('sort_order'); setLinks(data || []) }
+  async function fetchRssFeeds() { const { data } = await supabase.from('rss_feeds').select('*').order('sort_order'); setRssFeeds(data || []) }
+
+  async function saveProject() {
+    if (!projectName) return
+    setSaving(true)
+    const maxOrder = projects.length > 0 ? Math.max(...projects.map(p => p.sort_order)) : 0
+    const data = { name: projectName, description: projectDesc, icon: projectIcon, status: projectStatus, url: projectUrl || null, sort_order: editingProject ? editingProject.sort_order : maxOrder + 1 }
+    let error
+    if (editingProject) { const res = await supabase.from('projects').update(data).eq('id', editingProject.id); error = res.error }
+    else { const res = await supabase.from('projects').insert([data]); error = res.error }
+    setSaving(false)
+    if (!error) { setSaveMsg('✓ Project saved!'); setProjectName(''); setProjectDesc(''); setProjectIcon('✦'); setProjectStatus('Active'); setProjectUrl(''); setEditingProject(null); fetchProjects(); setTimeout(() => setSaveMsg(''), 3000) }
+    else setSaveMsg('Error: ' + error.message)
+  }
+
+  function startEditProject(p) { setEditingProject(p); setProjectName(p.name); setProjectDesc(p.description || ''); setProjectIcon(p.icon || '✦'); setProjectStatus(p.status || 'Active'); setProjectUrl(p.url || '') }
+  async function deleteProject(id) { if (!confirm('Delete?')) return; await supabase.from('projects').delete().eq('id', id); fetchProjects() }
+  async function toggleProject(id, active) { await supabase.from('projects').update({ active: !active }).eq('id', id); fetchProjects() }
+
+  async function saveLink() {
+    if (!linkName || !linkUrl) return
+    setSaving(true)
+    const maxOrder = links.length > 0 ? Math.max(...links.map(l => l.sort_order)) : 0
+    const data = { name: linkName, url: linkUrl, description: linkDesc, category: linkCategory, sort_order: editingLink ? editingLink.sort_order : maxOrder + 1 }
+    let error
+    if (editingLink) { const res = await supabase.from('links').update(data).eq('id', editingLink.id); error = res.error }
+    else { const res = await supabase.from('links').insert([data]); error = res.error }
+    setSaving(false)
+    if (!error) { setSaveMsg('✓ Link saved!'); setLinkName(''); setLinkUrl(''); setLinkDesc(''); setLinkCategory('Favorites'); setEditingLink(null); fetchLinks(); setTimeout(() => setSaveMsg(''), 3000) }
+    else setSaveMsg('Error: ' + error.message)
+  }
+
+  function startEditLink(l) { setEditingLink(l); setLinkName(l.name); setLinkUrl(l.url); setLinkDesc(l.description || ''); setLinkCategory(l.category || 'Favorites') }
+  async function deleteLink(id) { if (!confirm('Delete?')) return; await supabase.from('links').delete().eq('id', id); fetchLinks() }
+  async function toggleLink(id, active) { await supabase.from('links').update({ active: !active }).eq('id', id); fetchLinks() }
+
+  async function saveRssFeed() {
+    if (!feedName || !feedUrl) return
+    setSaving(true)
+    const maxOrder = rssFeeds.length > 0 ? Math.max(...rssFeeds.map(f => f.sort_order)) : 0
+    const data = { name: feedName, url: feedUrl, category: feedCategory, color: feedColor, sort_order: editingFeed ? editingFeed.sort_order : maxOrder + 1 }
+    let error
+    if (editingFeed) { const res = await supabase.from('rss_feeds').update(data).eq('id', editingFeed.id); error = res.error }
+    else { const res = await supabase.from('rss_feeds').insert([data]); error = res.error }
+    setSaving(false)
+    if (!error) { setSaveMsg('✓ Feed saved!'); setFeedName(''); setFeedUrl(''); setFeedCategory('General'); setFeedColor('#7aa4c8'); setEditingFeed(null); fetchRssFeeds(); setTimeout(() => setSaveMsg(''), 3000) }
+    else setSaveMsg('Error: ' + error.message)
+  }
+
+  function startEditFeed(f) { setEditingFeed(f); setFeedName(f.name); setFeedUrl(f.url); setFeedCategory(f.category || 'General'); setFeedColor(f.color || '#7aa4c8') }
+  async function deleteRssFeed(id) { if (!confirm('Delete?')) return; await supabase.from('rss_feeds').delete().eq('id', id); fetchRssFeeds() }
+  async function toggleRssFeed(id, active) { await supabase.from('rss_feeds').update({ active: !active }).eq('id', id); fetchRssFeeds() }
 
   function newPost() { setEditingPost(null); setTitle(''); setSlug(''); setExcerpt(''); setCategory(CATEGORIES[0]); setStatus('draft'); setFeatured(false); editor?.commands.setContent(''); setView('editor') }
   function editPost(post) { setEditingPost(post); setTitle(post.title); setSlug(post.slug); setExcerpt(post.excerpt || ''); setCategory(post.category || CATEGORIES[0]); setStatus(post.status); setFeatured(post.featured || false); editor?.commands.setContent(post.content || ''); setView('editor') }
@@ -223,7 +303,9 @@ export default function AdminPage() {
   const tabs = [
     ['posts', 'Posts'], ['now', 'Now Page'], ['ticker', 'Ticker'],
     ['manifesto', 'Manifesto'], ['settings', 'Site Settings'],
-    ['studio', 'Studio'], ['photos', 'Photos'],
+    ['studio', 'Studio'], ['projects', 'Projects'],
+    ['photos', 'Photos'], ['links', 'Links'],
+    ['rss', 'RSS Feeds'],
     ['guestbook', `Guestbook (${guestbookEntries.length})`],
     ['subscribers', `Subscribers (${subscribers.length})`],
   ]
@@ -564,6 +646,145 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {view === 'projects' && (
+        <div className="admin-content">
+          <div className="admin-section-header"><h2>Projects</h2></div>
+          <div className="media-layout">
+            <div className="media-form">
+              <div className="editor-panel">
+                <div className="editor-panel-header">{editingProject ? 'Edit Project' : 'Add Project'}</div>
+                <div className="editor-panel-body">
+                  <div className="field-group"><label>Name *</label><input type="text" value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="Project name..." /></div>
+                  <div className="field-group"><label>Description</label><textarea value={projectDesc} onChange={e => setProjectDesc(e.target.value)} rows={3} placeholder="What is this project?" /></div>
+                  <div className="field-group"><label>Icon (emoji)</label><input type="text" value={projectIcon} onChange={e => setProjectIcon(e.target.value)} placeholder="📷" style={{width:'80px'}} /></div>
+                  <div className="field-group"><label>Status</label><input type="text" value={projectStatus} onChange={e => setProjectStatus(e.target.value)} placeholder="Active, Paused, Complete..." /></div>
+                  <div className="field-group"><label>URL (optional)</label><input type="text" value={projectUrl} onChange={e => setProjectUrl(e.target.value)} placeholder="https://..." /></div>
+                  {saveMsg && <div className="save-msg">{saveMsg}</div>}
+                  <button onClick={saveProject} disabled={saving} className="publish-btn">{saving ? 'Saving...' : editingProject ? '✓ Update' : '✓ Add Project'}</button>
+                  {editingProject && <button onClick={() => { setEditingProject(null); setProjectName(''); setProjectDesc(''); setProjectIcon('✦'); setProjectStatus('Active'); setProjectUrl('') }} className="back-btn">Cancel</button>}
+                </div>
+              </div>
+            </div>
+            <div className="media-list">
+              <div className="admin-section-header" style={{marginBottom:'16px'}}><h2 style={{fontSize:'18px'}}>All Projects ({projects.length})</h2></div>
+              {projects.length === 0 ? <div className="empty-state"><div className="empty-text">// no projects yet.</div></div> : (
+                <div className="posts-table">
+                  {projects.map(p => (
+                    <div key={p.id} className="posts-table-row" style={{gridTemplateColumns:'auto auto 1fr auto'}}>
+                      <span style={{fontSize:'20px'}}>{p.icon}</span>
+                      <span style={{fontFamily:'VT323,monospace', fontSize:'13px', color:'var(--pixel-green)', letterSpacing:'1px'}}>{p.status}</span>
+                      <span style={{color:'var(--dark-brown)', fontWeight:700}}>{p.name}{p.description && <span style={{color:'var(--brown)', fontWeight:400, display:'block', fontSize:'12px'}}>{p.description}</span>}</span>
+                      <span className="post-table-actions">
+                        <button onClick={() => startEditProject(p)}>Edit</button>
+                        <button onClick={() => toggleProject(p.id, p.active)}>{p.active ? 'Hide' : 'Show'}</button>
+                        <button onClick={() => deleteProject(p.id)} className="delete-btn">Delete</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'links' && (
+        <div className="admin-content">
+          <div className="admin-section-header"><h2>Links & Favorites</h2></div>
+          <div className="media-layout">
+            <div className="media-form">
+              <div className="editor-panel">
+                <div className="editor-panel-header">{editingLink ? 'Edit Link' : 'Add Link'}</div>
+                <div className="editor-panel-body">
+                  <div className="field-group"><label>Name *</label><input type="text" value={linkName} onChange={e => setLinkName(e.target.value)} placeholder="Site or person name..." /></div>
+                  <div className="field-group"><label>URL *</label><input type="text" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://..." /></div>
+                  <div className="field-group"><label>Description</label><textarea value={linkDesc} onChange={e => setLinkDesc(e.target.value)} rows={2} placeholder="Why do you recommend this?" /></div>
+                  <div className="field-group"><label>Category</label><input type="text" value={linkCategory} onChange={e => setLinkCategory(e.target.value)} placeholder="Writers & Thinkers, IndieWeb, Local..." /></div>
+                  {saveMsg && <div className="save-msg">{saveMsg}</div>}
+                  <button onClick={saveLink} disabled={saving} className="publish-btn">{saving ? 'Saving...' : editingLink ? '✓ Update' : '✓ Add Link'}</button>
+                  {editingLink && <button onClick={() => { setEditingLink(null); setLinkName(''); setLinkUrl(''); setLinkDesc(''); setLinkCategory('Favorites') }} className="back-btn">Cancel</button>}
+                </div>
+              </div>
+            </div>
+            <div className="media-list">
+              <div className="admin-section-header" style={{marginBottom:'16px'}}><h2 style={{fontSize:'18px'}}>All Links ({links.length})</h2></div>
+              {links.length === 0 ? <div className="empty-state"><div className="empty-text">// no links yet.</div></div> : (
+                <div className="posts-table">
+                  {links.map(l => (
+                    <div key={l.id} className="posts-table-row" style={{gridTemplateColumns:'1fr auto auto'}}>
+                      <span>
+                        <span style={{color:'var(--dark-brown)', fontWeight:700}}>{l.name}</span>
+                        <span style={{fontFamily:'VT323,monospace', fontSize:'13px', color:'var(--rust)', marginLeft:'8px'}}>{l.category}</span>
+                        <span style={{color:'var(--sage)', display:'block', fontSize:'12px'}}>{l.url}</span>
+                      </span>
+                      <button onClick={() => toggleLink(l.id, l.active)} style={{fontFamily:'Space Mono,monospace', fontSize:'10px', padding:'4px 8px', background:'transparent', border:'1px solid var(--border)', color: l.active ? 'var(--pixel-green)' : 'var(--sage)', cursor:'pointer'}}>{l.active ? 'Live' : 'Hidden'}</button>
+                      <span className="post-table-actions">
+                        <button onClick={() => startEditLink(l)}>Edit</button>
+                        <button onClick={() => deleteLink(l.id)} className="delete-btn">Delete</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'rss' && (
+        <div className="admin-content">
+          <div className="admin-section-header"><h2>RSS Feeds</h2></div>
+          <div style={{marginBottom:'16px', fontSize:'13px', color:'var(--sage)', fontFamily:'VT323,monospace', letterSpacing:'1px'}}>
+            // Add RSS feed URLs here. They appear on /feed and as a widget on the homepage.
+            YouTube channels, blogs, Substack newsletters, and most personal sites have RSS feeds.
+          </div>
+          <div className="media-layout">
+            <div className="media-form">
+              <div className="editor-panel">
+                <div className="editor-panel-header">{editingFeed ? 'Edit Feed' : 'Add Feed'}</div>
+                <div className="editor-panel-body">
+                  <div className="field-group"><label>Name *</label><input type="text" value={feedName} onChange={e => setFeedName(e.target.value)} placeholder="Source name..." /></div>
+                  <div className="field-group"><label>RSS URL *</label><input type="text" value={feedUrl} onChange={e => setFeedUrl(e.target.value)} placeholder="https://example.com/feed.xml" /></div>
+                  <div className="field-group"><label>Category</label><input type="text" value={feedCategory} onChange={e => setFeedCategory(e.target.value)} placeholder="Writers, Music, Local, News..." /></div>
+                  <div className="field-group">
+                    <label>Color</label>
+                    <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                      <input type="color" value={feedColor} onChange={e => setFeedColor(e.target.value)} style={{width:'40px', height:'32px', padding:'2px', background:'#0f0d08', border:'1px solid var(--border)', cursor:'pointer'}} />
+                      <input type="text" value={feedColor} onChange={e => setFeedColor(e.target.value)} placeholder="#7aa4c8" style={{flex:1}} />
+                    </div>
+                  </div>
+                  {saveMsg && <div className="save-msg">{saveMsg}</div>}
+                  <button onClick={saveRssFeed} disabled={saving} className="publish-btn">{saving ? 'Saving...' : editingFeed ? '✓ Update' : '✓ Add Feed'}</button>
+                  {editingFeed && <button onClick={() => { setEditingFeed(null); setFeedName(''); setFeedUrl(''); setFeedCategory('General'); setFeedColor('#7aa4c8') }} className="back-btn">Cancel</button>}
+                </div>
+              </div>
+            </div>
+            <div className="media-list">
+              <div className="admin-section-header" style={{marginBottom:'16px'}}><h2 style={{fontSize:'18px'}}>All Feeds ({rssFeeds.length})</h2></div>
+              {rssFeeds.length === 0 ? <div className="empty-state"><div className="empty-text">// no feeds yet.</div></div> : (
+                <div className="posts-table">
+                  {rssFeeds.map(f => (
+                    <div key={f.id} className="posts-table-row" style={{gridTemplateColumns:'auto 1fr auto auto'}}>
+                      <div style={{width:'12px', height:'12px', borderRadius:'50%', background:f.color, flexShrink:0}}></div>
+                      <span>
+                        <span style={{color:'var(--dark-brown)', fontWeight:700}}>{f.name}</span>
+                        <span style={{fontFamily:'VT323,monospace', fontSize:'13px', color:'var(--rust)', marginLeft:'8px'}}>{f.category}</span>
+                        <span style={{color:'var(--sage)', display:'block', fontSize:'11px', marginTop:'2px'}}>{f.url}</span>
+                      </span>
+                      <button onClick={() => toggleRssFeed(f.id, f.active)} style={{fontFamily:'Space Mono,monospace', fontSize:'10px', padding:'4px 8px', background:'transparent', border:'1px solid var(--border)', color: f.active ? 'var(--pixel-green)' : 'var(--sage)', cursor:'pointer'}}>{f.active ? 'Active' : 'Off'}</button>
+                      <span className="post-table-actions">
+                        <button onClick={() => startEditFeed(f)}>Edit</button>
+                        <button onClick={() => deleteRssFeed(f.id)} className="delete-btn">Delete</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
