@@ -9,6 +9,7 @@ export default function Home() {
   const [email, setEmail] = useState('')
   const [subMsg, setSubMsg] = useState('')
   const [posts, setPosts] = useState([])
+  const [featuredPost, setFeaturedPost] = useState(null)
   const [tickerItems, setTickerItems] = useState([])
   const [manifestoItems, setManifestoItems] = useState([])
   const [nowPage, setNowPage] = useState(null)
@@ -16,11 +17,9 @@ export default function Home() {
   const [visitorCount, setVisitorCount] = useState(null)
   const [subCount, setSubCount] = useState(null)
   const [recentPhotos, setRecentPhotos] = useState([])
+  const [guestbookPreviews, setGuestbookPreviews] = useState([])
 
-  useEffect(() => {
-    fetchAll()
-    trackVisit()
-  }, [])
+  useEffect(() => { fetchAll(); trackVisit() }, [])
 
   async function fetchAll() {
     const [
@@ -29,28 +28,33 @@ export default function Home() {
       { data: nowData },
       { data: settingsData },
       { data: postsData },
-      { count: visitorCount },
-      { count: subCount },
-      { data: photosData }
+      { data: featuredData },
+      { count: vCount },
+      { count: sCount },
+      { data: photosData },
+      { data: guestbookData }
     ] = await Promise.all([
       supabase.from('ticker_items').select('*').eq('active', true).order('sort_order'),
       supabase.from('manifesto_items').select('*').order('sort_order'),
       supabase.from('now_page').select('*').single(),
       supabase.from('site_settings').select('*'),
       supabase.from('posts').select('*').eq('status', 'published').order('published_at', { ascending: false }).limit(5),
+      supabase.from('posts').select('*').eq('status', 'published').eq('featured', true).order('published_at', { ascending: false }).limit(1).single(),
       supabase.from('visitors').select('*', { count: 'exact', head: true }),
       supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('photos').select('*').eq('active', true).order('sort_order').limit(4)
+      supabase.from('photos').select('*').eq('active', true).order('sort_order').limit(4),
+      supabase.from('guestbook').select('*').order('created_at', { ascending: false }).limit(2)
     ])
 
     if (tickerData) setTickerItems(tickerData)
     if (manifestoData) setManifestoItems(manifestoData)
     if (nowData) setNowPage(nowData)
     if (postsData) setPosts(postsData)
-    if (visitorCount !== null) setVisitorCount(visitorCount)
-    if (subCount !== null) setSubCount(subCount)
+    if (featuredData) setFeaturedPost(featuredData)
+    if (vCount !== null) setVisitorCount(vCount)
+    if (sCount !== null) setSubCount(sCount)
     if (photosData) setRecentPhotos(photosData)
-
+    if (guestbookData) setGuestbookPreviews(guestbookData)
     if (settingsData) {
       const s = {}
       settingsData.forEach(row => { s[row.key] = row.value })
@@ -73,25 +77,15 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, first_name: fname })
     })
-    if (res.ok) {
-      setSubMsg("✓ You're in!")
-    } else {
-      setSubMsg('Something went wrong.')
-    }
+    if (res.ok) setSubMsg("✓ You're in!")
+    else setSubMsg('Something went wrong.')
   }
 
   const tickerMessages = tickerItems.length > 0
     ? [...tickerItems, ...tickerItems]
-    : [
-        { message: 'Subscribing here means no algorithm, no ads — just me in your inbox' },
-        { message: 'Presence is resistance. Curation is revolutionary.' },
-        { message: 'Subscribing here means no algorithm, no ads — just me in your inbox' },
-        { message: 'Presence is resistance. Curation is revolutionary.' },
-      ]
+    : [{ message: 'Presence is resistance. Curation is revolutionary.' }, { message: 'No algorithm. No ads. Just me.' }, { message: 'Presence is resistance. Curation is revolutionary.' }, { message: 'No algorithm. No ads. Just me.' }]
 
-  const formattedCount = visitorCount !== null
-    ? String(visitorCount).padStart(7, '0')
-    : '000,000'
+  const formattedCount = visitorCount !== null ? String(visitorCount).padStart(7, '0') : '0000000'
 
   const nowItems = nowPage ? [
     { icon: '📖', label: 'reading', value: nowPage.reading },
@@ -101,19 +95,40 @@ export default function Home() {
     { icon: '🌍', label: 'thinking', value: nowPage.thinking },
   ].filter(i => i.value) : []
 
+  const tags = settings.tags
+    ? settings.tags.split(',').map(t => t.trim()).filter(Boolean)
+    : ['writer', 'hobbyist', 'culture', 'food', 'travel', 'corporate dystopia']
+
+  function stripHtml(html) { return html ? html.replace(/<[^>]*>/g, '') : '' }
+  function getExcerpt(post, length = 120) {
+    if (post.excerpt) return post.excerpt
+    const text = stripHtml(post.content || '')
+    return text.length > length ? text.substring(0, length) + '...' : text
+  }
+  function readTime(post) { return Math.max(1, Math.ceil(stripHtml(post.content || '').split(' ').length / 200)) }
+
+  const gridPosts = posts.filter(p => !featuredPost || p.id !== featuredPost.id).slice(0, 4)
+
+  // Get first two paragraphs of featured post for preview
+  function getFeaturedPreview(post) {
+    if (!post?.content) return { first: '', second: '' }
+    const parts = post.content.split('</p>')
+    const first = (parts[0] || '') + '</p>'
+    const second = parts.length > 1 ? (parts[1] || '') + '</p>' : ''
+    return { first, second }
+  }
+
+  const featuredPreview = getFeaturedPreview(featuredPost)
+
   return (
     <>
-      {/* TICKER BAR */}
       <div className="ticker-bar">
         <div className="ticker-label">★ LIVE ★</div>
         <div className="ticker-track">
-          {tickerMessages.map((item, i) => (
-            <span key={i}>{item.message}</span>
-          ))}
+          {tickerMessages.map((item, i) => <span key={i}>{item.message}</span>)}
         </div>
       </div>
 
-      {/* HEADER */}
       <header>
         <div className="header-top">
           <div className="header-meta-left">
@@ -143,38 +158,30 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* DATE BANNER */}
       <div className="page-wrapper">
-        <div className="date-banner" id="datebanner">
+        <div className="date-banner">
           ✦ {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · Vol. I · Est. 2025 · Independent & Algorithm-Free ✦
         </div>
 
-        {/* MAIN GRID */}
         <div className="main-grid">
 
           {/* LEFT SIDEBAR */}
           <aside className="sidebar-left">
-
-            {/* About */}
             <div className="widget">
               <div className="widget-header">About Me</div>
               <div className="widget-body" style={{textAlign:'center'}}>
                 <div className="avatar-frame">
                   {settings.avatar_url
                     ? <img src={settings.avatar_url} alt="Tyson Reid" style={{width:'100%', height:'100%', objectFit:'cover'}} />
-                    : '🧑'
-                  }
+                    : '🧑'}
                 </div>
                 <div className="about-bio">{settings.bio || 'A 40-something polymath and serial hobbyist.'}</div>
                 <div className="about-tags">
-                  {['writer','hobbyist','culture','food','travel','corporate dystopia'].map(tag => (
-                    <span className="tag" key={tag}>{tag}</span>
-                  ))}
+                  {tags.map(tag => <span className="tag" key={tag}>{tag}</span>)}
                 </div>
               </div>
             </div>
 
-            {/* Currently */}
             {nowItems.length > 0 && (
               <div className="widget">
                 <div className="widget-header">Currently</div>
@@ -189,7 +196,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Recent Posts */}
             {posts.length > 0 && (
               <div className="widget">
                 <div className="widget-header">Recent Writing</div>
@@ -198,7 +204,7 @@ export default function Home() {
                     <div className="recent-post-item" key={post.id}>
                       <Link href={`/writing/${post.slug}`}>{post.title}</Link><br/>
                       <span className="recent-post-date">
-                        {post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} · {post.content ? Math.ceil(post.content.replace(/<[^>]*>/g, '').split(' ').length / 200) : 0} min read
+                        {post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} · {readTime(post)} min read
                       </span>
                     </div>
                   ))}
@@ -206,42 +212,54 @@ export default function Home() {
               </div>
             )}
 
-            {/* Webring */}
             <div className="widget">
               <div className="widget-header">IndieWeb Ring</div>
               <div className="widget-body">
                 <div className="webring">
-                  <a href="#">◀ prev</a>
-                  <div className="webring-name">✦<br/>personal<br/>websites<br/>webring<br/>✦</div>
-                  <a href="#">next ▶</a>
+                  <a href={settings.webring_prev_url || '#'}>◀ prev</a>
+                  <div className="webring-name">✦<br/>{(settings.webring_name || 'personal websites webring').split(' ').join('<br/>')}<br/>✦</div>
+                  <a href={settings.webring_next_url || '#'}>next ▶</a>
                 </div>
                 <div style={{textAlign:'center', marginTop:'10px'}}>
-                  <a href="#" className="webring-join">[ join the ring ]</a>
+                  <a href={settings.webring_join_url || '#'} className="webring-join">[ join the ring ]</a>
                 </div>
               </div>
             </div>
-
           </aside>
 
           {/* MAIN CONTENT */}
           <main className="main-content">
 
-            {/* HERO STORY */}
-            <article className="hero-story">
-              <div className="story-kicker">Featured Essay · This Week</div>
-              <h1 className="story-headline">Why I&apos;m <em>Reclaiming</em> My Corner of the Internet — and Why You Should Too</h1>
-              <div className="story-byline">By Tyson Reid · March 5, 2025 · 8 min read · Filed under: Essays, IndieWeb</div>
-              <div className="story-columns">
-                <p className="drop-cap">There used to be a version of the internet that felt like wandering a city of strangers&apos; apartments — each one decorated entirely to that person&apos;s taste, filled with the specific and personal. You might find a fan site for a mid-century type designer next to a hand-coded recipe archive next to someone&apos;s daily photo journal. The internet had texture. It had humanity. It had mess.</p>
-                <p>Somewhere in the last decade we traded all of that for a beige apartment complex. Same layout in every unit. Landlords who decide what you see, who sees you, and what it&apos;s all for. The algorithm became the invisible interior decorator — and it optimized for engagement, not for you.</p>
-                <div className="pull-quote">
-                  <blockquote>&ldquo;Disconnecting from the feed isn&apos;t a retreat. It&apos;s the most radical act of presence available to us.&rdquo;</blockquote>
+            {/* FEATURED / HERO STORY */}
+            {featuredPost ? (
+              <article className="hero-story">
+                <div className="story-kicker">Featured Essay · {featuredPost.category}</div>
+                <h1 className="story-headline">
+                  <Link href={`/writing/${featuredPost.slug}`} style={{color:'inherit', textDecoration:'none'}}>
+                    {featuredPost.title}
+                  </Link>
+                </h1>
+                <div className="story-byline">
+                  By Tyson Reid · {featuredPost.published_at ? new Date(featuredPost.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : ''} · {readTime(featuredPost)} min read · Filed under: {featuredPost.category}
                 </div>
-                <p>This site is my answer to that. A place I own. A place where you — real you, a human who found this somehow — can subscribe to my actual email list and actually hear from me when I write something. No timeline. No ratio. No one deciding you didn&apos;t see the thing I made.</p>
-                <p>I&apos;m a 40-something polymath and serial hobbyist, kindred spirit to Tony Bourdain trapped in corporate drudgery. An anthropologist at heart, but filling out spreadsheets in practice. Welcome to my little corner of the internet.</p>
-              </div>
-              <Link href="/writing" className="read-more">Continue reading</Link>
-            </article>
+                <div className="story-columns">
+                  <div className="drop-cap" dangerouslySetInnerHTML={{ __html: featuredPreview.first }} />
+                  <div dangerouslySetInnerHTML={{ __html: featuredPreview.second }} />
+                </div>
+                <Link href={`/writing/${featuredPost.slug}`} className="read-more">Continue reading</Link>
+              </article>
+            ) : (
+              <article className="hero-story">
+                <div className="story-kicker">Welcome</div>
+                <h1 className="story-headline">Presence is <em>resistance.</em> Curation is revolutionary.</h1>
+                <div className="story-byline">By Tyson Reid · Est. 2025 · Independent & Algorithm-Free</div>
+                <div className="story-columns">
+                  <p className="drop-cap">{settings.bio || 'A 40-something polymath and serial hobbyist, kindred spirit to Tony Bourdain trapped in corporate drudgery.'}</p>
+                  <p>This is my corner of the internet. A place I own. No timeline. No ratio. No algorithm deciding what you see. Subscribe to hear from me directly.</p>
+                </div>
+                <Link href="/writing" className="read-more">Read the writing</Link>
+              </article>
+            )}
 
             {/* POST GRID */}
             <div className="section-head">
@@ -250,13 +268,13 @@ export default function Home() {
               <Link href="/writing" className="section-all">All posts →</Link>
             </div>
 
-            {posts.length > 0 ? (
+            {gridPosts.length > 0 ? (
               <div className="posts-grid">
-                {posts.slice(0, 4).map(post => (
+                {gridPosts.map(post => (
                   <div className="post-card" key={post.id}>
                     <div className="post-card-category">{post.category}</div>
                     <div className="post-card-title"><Link href={`/writing/${post.slug}`}>{post.title}</Link></div>
-                    <div className="post-card-excerpt">{post.excerpt}</div>
+                    <div className="post-card-excerpt">{getExcerpt(post)}</div>
                     <div className="post-card-meta">
                       <span>{post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
                       <Link href={`/writing/${post.slug}`} className="read-more-sm">Read →</Link>
@@ -265,23 +283,8 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <div className="posts-grid">
-                {[
-                  { cat: 'Corporate Dystopia', title: 'The Case for Boring Hobbies in an Attention Economy', excerpt: 'Why I took up birdwatching, learned to sew, and became inexplicably passionate about sourdough — and how none of it was content.', date: 'Feb 22, 2025', cta: 'Read' },
-                  { cat: 'Culture', title: 'Past Lives Is the Best Movie About Memory Made in a Decade', excerpt: "A review of Celine Song's quiet masterpiece, and what it has to say about the paths not taken.", date: 'Feb 14, 2025', cta: 'Read' },
-                  { cat: 'Personal', title: 'How I Finally Stopped Doomscrolling (Mostly)', excerpt: 'The habits, tools, and uncomfortable truths that helped me reclaim about 2 hours a day.', date: 'Feb 1, 2025', cta: 'Read' },
-                  { cat: 'Travel', title: 'I Tried Developing Film for 30 Days', excerpt: 'A month-long experiment with analog photography and the patience it takes to not see your photos immediately.', date: 'Jan 20, 2025', cta: 'Watch' },
-                ].map(post => (
-                  <div className="post-card" key={post.title}>
-                    <div className="post-card-category">{post.cat}</div>
-                    <div className="post-card-title"><Link href="/writing">{post.title}</Link></div>
-                    <div className="post-card-excerpt">{post.excerpt}</div>
-                    <div className="post-card-meta">
-                      <span>{post.date}</span>
-                      <Link href="/writing" className="read-more-sm">{post.cta} →</Link>
-                    </div>
-                  </div>
-                ))}
+              <div className="empty-state" style={{padding:'40px 0'}}>
+                <div className="empty-text">// posts coming soon.</div>
               </div>
             )}
 
@@ -294,7 +297,8 @@ export default function Home() {
             <div className="photo-strip">
               {recentPhotos.length > 0 ? (
                 recentPhotos.map((photo, i) => (
-                  <Link href="/photos" key={photo.id} className={`photo-thumb t${i + 1}`} style={{backgroundImage: `url(${photo.url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: '0'}}>
+                  <Link href="/photos" key={photo.id} className={`photo-thumb t${i + 1}`}
+                    style={{backgroundImage:`url(${photo.url})`, backgroundSize:'cover', backgroundPosition:'center', fontSize:'0'}}>
                     <span style={{display:'none'}}>{photo.caption}</span>
                   </Link>
                 ))
@@ -313,8 +317,6 @@ export default function Home() {
 
           {/* RIGHT SIDEBAR */}
           <aside className="sidebar-right">
-
-            {/* NEWSLETTER */}
             <div className="newsletter-widget">
               <div className="newsletter-header">✉ Join the List</div>
               <div className="newsletter-body">
@@ -323,9 +325,7 @@ export default function Home() {
                 <div className="newsletter-form">
                   <input type="text" placeholder="Your first name" value={fname} onChange={e => setFname(e.target.value)} />
                   <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} />
-                  <button className="newsletter-btn" onClick={handleSubscribe}>
-                    {subMsg || 'Subscribe Free →'}
-                  </button>
+                  <button className="newsletter-btn" onClick={handleSubscribe}>{subMsg || 'Subscribe Free →'}</button>
                 </div>
                 <div className="newsletter-promise">🔒 No spam, ever. Unsubscribe anytime.</div>
                 {subCount !== null && (
@@ -337,7 +337,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* MANIFESTO */}
             {manifestoItems.length > 0 && (
               <div className="widget">
                 <div className="widget-header">The Manifesto</div>
@@ -352,24 +351,29 @@ export default function Home() {
               </div>
             )}
 
-            {/* GUESTBOOK */}
             <div className="widget">
               <div className="widget-header">Guestbook</div>
               <div className="widget-body">
-                <div className="gb-entry">&ldquo;Found this through a webring. Stayed for an hour. This is what the internet should be.&rdquo; <span className="gb-sig">— Jamie, Portland</span></div>
-                <div className="gb-entry">&ldquo;Your essay about boring hobbies changed how I think about free time.&rdquo; <span className="gb-sig">— anon, NYC</span></div>
+                {guestbookPreviews.length > 0 ? (
+                  guestbookPreviews.map(entry => (
+                    <div className="gb-entry" key={entry.id}>
+                      &ldquo;{entry.message}&rdquo;{' '}
+                      <span className="gb-sig">— {entry.name}{entry.location ? `, ${entry.location}` : ''}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="gb-entry">&ldquo;Be the first to sign the guestbook.&rdquo;</div>
+                )}
                 <div style={{textAlign:'center', marginTop:'12px'}}>
                   <Link href="/guestbook" className="gb-btn">Sign the Guestbook</Link>
                 </div>
               </div>
             </div>
-
           </aside>
 
         </div>
       </div>
 
-      {/* FOOTER */}
       <footer>
         <div className="footer-grid">
           <div>
@@ -379,26 +383,36 @@ export default function Home() {
           <div>
             <div className="footer-col-header">Writing</div>
             <ul className="footer-links">
-              {['All Essays','Corporate Dystopia','Culture','Food & Travel','Newsletter Archive'].map(l => <li key={l}><Link href="/writing">{l}</Link></li>)}
+              <li><Link href="/writing">All Essays</Link></li>
+              {tags.slice(0, 4).map(tag => (
+                <li key={tag}><Link href={`/writing?category=${encodeURIComponent(tag)}`}>{tag.charAt(0).toUpperCase() + tag.slice(1)}</Link></li>
+              ))}
             </ul>
           </div>
           <div>
             <div className="footer-col-header">Studio</div>
             <ul className="footer-links">
-              {['YouTube Channel','Photo Galleries','Projects','Now Page','Colophon'].map(l => <li key={l}><Link href="/studio">{l}</Link></li>)}
+              <li><a href={settings.youtube_url || '#'} target="_blank" rel="noopener noreferrer">YouTube Channel</a></li>
+              <li><Link href="/photos">Photo Galleries</Link></li>
+              <li><Link href="/studio">Projects</Link></li>
+              <li><Link href="/now">Now Page</Link></li>
+              <li><Link href="/about">About</Link></li>
             </ul>
           </div>
           <div>
             <div className="footer-col-header">Connect</div>
             <ul className="footer-links">
-              {['Email Me','Subscribe','Guestbook','RSS Feed','Join the Webring'].map(l => <li key={l}><a href="#">{l}</a></li>)}
+              <li><a href={settings.email_address ? `mailto:${settings.email_address}` : '#'}>Email Me</a></li>
+              <li><Link href="/guestbook">Guestbook</Link></li>
+              <li><a href={settings.rss_url || '#'}>RSS Feed</a></li>
+              <li><a href={settings.webring_join_url || '#'}>Join the Webring</a></li>
             </ul>
           </div>
         </div>
         <div className="footer-bottom">
           <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality — no VC funding, no ads, no tracking</div>
-          <div className="webring-footer">◀ <a href="#">prev</a> · IndieWeb Ring · <a href="#">next</a> ▶</div>
-          <div>© 2025 Tyson Reid · All rights reserved</div>
+          <div className="webring-footer">◀ <a href={settings.webring_prev_url || '#'}>prev</a> · IndieWeb Ring · <a href={settings.webring_next_url || '#'}>next</a> ▶</div>
+          <div>© {new Date().getFullYear()} Tyson Reid · All rights reserved</div>
         </div>
       </footer>
 
