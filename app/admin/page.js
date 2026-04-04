@@ -244,7 +244,16 @@ export default function AdminPage() {
 
   async function saveNowPage() {
     setSaving(true)
-    const { error } = await supabase.from('now_page').update({ ...nowPage, updated_at: new Date().toISOString() }).eq('id', nowPage.id)
+    const { error } = await supabase.from('now_page').update({
+      reading: nowPage.reading, listening: nowPage.listening,
+      watching: nowPage.watching, making: nowPage.making, thinking: nowPage.thinking,
+      reading_url: nowPage.reading_url || null,
+      listening_url: nowPage.listening_url || null,
+      watching_url: nowPage.watching_url || null,
+      making_url: nowPage.making_url || null,
+      thinking_url: nowPage.thinking_url || null,
+      updated_at: new Date().toISOString()
+    }).eq('id', nowPage.id)
     setSaving(false); setSaveMsg(error ? 'Error: ' + error.message : '✓ Now page updated!'); setTimeout(() => setSaveMsg(''), 3000)
   }
 
@@ -417,9 +426,25 @@ export default function AdminPage() {
           <div className="admin-section-header"><h2>Now Page</h2></div>
           <div className="settings-grid">
             {['reading', 'listening', 'watching', 'making', 'thinking'].map(field => (
-              <div className="field-group" key={field}>
-                <label>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
-                <input type="text" value={nowPage[field] || ''} onChange={e => setNowPage({ ...nowPage, [field]: e.target.value })} placeholder={`Currently ${field}...`} />
+              <div key={field} style={{display:'flex', flexDirection:'column', gap:'6px', paddingBottom:'16px', borderBottom:'1px dashed var(--border)'}}>
+                <div className="field-group">
+                  <label>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                  <input
+                    type="text"
+                    value={nowPage[field] || ''}
+                    onChange={e => setNowPage({ ...nowPage, [field]: e.target.value })}
+                    placeholder={`Currently ${field}...`}
+                  />
+                </div>
+                <div className="field-group">
+                  <label style={{color:'var(--border)'}}>Link URL (optional)</label>
+                  <input
+                    type="text"
+                    value={nowPage[`${field}_url`] || ''}
+                    onChange={e => setNowPage({ ...nowPage, [`${field}_url`]: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
             ))}
             {saveMsg && <div className="save-msg">{saveMsg}</div>}
