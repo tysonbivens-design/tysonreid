@@ -3,20 +3,28 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { Ticker, SiteHeader, SiteFooter, DateBanner } from '../components'
 
 export default function StudioPage() {
   const [videos, setVideos] = useState([])
   const [projects, setProjects] = useState([])
+  const [settings, setSettings] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
-      const [{ data: videosData }, { data: projectsData }] = await Promise.all([
+      const [{ data: videosData }, { data: projectsData }, { data: settingsData }] = await Promise.all([
         supabase.from('videos').select('*').eq('active', true).order('sort_order'),
-        supabase.from('projects').select('*').eq('active', true).order('sort_order')
+        supabase.from('projects').select('*').eq('active', true).order('sort_order'),
+        supabase.from('site_settings').select('*')
       ])
       setVideos(videosData || [])
       setProjects(projectsData || [])
+      if (settingsData) {
+        const s = {}
+        settingsData.forEach(row => { s[row.key] = row.value })
+        setSettings(s)
+      }
       setLoading(false)
     }
     fetchData()
@@ -24,57 +32,22 @@ export default function StudioPage() {
 
   return (
     <>
-      <div className="ticker-bar">
-        <div className="ticker-label">★ LIVE ★</div>
-        <div className="ticker-track">
-          <span>The Studio — videos, photos, and creative work</span>
-          <span>Amateur YouTuber. Serial hobbyist. Making things for the love of it.</span>
-          <span>The Studio — videos, photos, and creative work</span>
-          <span>Amateur YouTuber. Serial hobbyist. Making things for the love of it.</span>
-        </div>
-      </div>
-
-      <header>
-        <div className="header-top">
-          <div className="header-meta-left">
-            <div>EST. 2025</div>
-            <div>INDEPENDENT SINCE DAY ONE</div>
-            <div>NO ALGORITHMS · NO ADS</div>
-          </div>
-          <div className="site-title-block">
-            <div className="site-eyebrow">Welcome to</div>
-            <div className="site-name">Tyson Reid</div>
-            <div className="site-tagline">Presence is resistance. Curation is revolutionary.</div>
-          </div>
-          <div className="header-meta-right">
-            <div>EST. 2025</div>
-            <div>THE STUDIO</div>
-          </div>
-        </div>
-        <nav>
-          <Link href="/">[ HOME ]</Link>
-          <Link href="/writing">[ WRITING ]</Link>
-          <Link href="/studio" className="active">[ STUDIO ]</Link>
-          <Link href="/photos">[ PHOTOS ]</Link>
-          <Link href="/about">[ ABOUT ]</Link>
-          <Link href="/guestbook">[ GUESTBOOK ]</Link>
-          <Link href="/now" className="nav-now">NOW PAGE</Link>
-        </nav>
-      </header>
-
+      <Ticker />
+      <SiteHeader activePage="/studio" />
       <div className="page-wrapper">
-        <div className="date-banner">✦ THE STUDIO · Videos, Projects & Creative Work ✦</div>
-
+        <DateBanner label="THE STUDIO · Videos, Projects & Creative Work" />
         <div className="studio-page">
           <div className="studio-header">
             <h1 className="writing-title">The Studio</h1>
-            <p className="writing-subtitle">An amateur YouTuber and serial hobbyist, making things for the love of it. No sponsorships. No algorithm chasing. Just projects.</p>
+            <p className="writing-subtitle">An amateur YouTuber and serial hobbyist, making things for the love of it.</p>
           </div>
 
           <div className="section-head">
             <div className="section-head-title">Recent Videos</div>
             <div className="section-head-line double"></div>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="section-all">YouTube Channel →</a>
+            {settings.youtube_url && settings.youtube_url !== '#' && (
+              <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="section-all">YouTube Channel →</a>
+            )}
           </div>
 
           {loading ? (
@@ -91,7 +64,7 @@ export default function StudioPage() {
                     </div>
                   ) : video.video_url ? (
                     <div className="video-embed">
-                      <video src={video.video_url} controls style={{width:'100%', height:'100%'}} />
+                      <video src={video.video_url} controls style={{width:'100%',height:'100%'}} />
                     </div>
                   ) : (
                     <div className="video-placeholder">
@@ -116,12 +89,9 @@ export default function StudioPage() {
               </div>
               <div className="projects-grid">
                 {projects.map(project => (
-                  <div
-                    key={project.id}
-                    className="project-card"
+                  <div key={project.id} className="project-card"
                     onClick={() => project.url && window.open(project.url, '_blank')}
-                    style={{cursor: project.url ? 'pointer' : 'default'}}
-                  >
+                    style={{cursor: project.url ? 'pointer' : 'default'}}>
                     <div className="project-icon">{project.icon}</div>
                     <div className="project-status">{project.status}</div>
                     <div className="project-name">{project.name}</div>
@@ -133,14 +103,7 @@ export default function StudioPage() {
           )}
         </div>
       </div>
-
-      <footer>
-        <div className="footer-bottom" style={{maxWidth:'1200px', margin:'0 auto'}}>
-          <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality</div>
-          <Link href="/" style={{color:'var(--muted-gold)', fontFamily:'VT323, monospace', fontSize:'16px', textDecoration:'none'}}>← Back to Home</Link>
-          <div>© {new Date().getFullYear()} Tyson Reid</div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }
