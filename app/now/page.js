@@ -19,11 +19,11 @@ export default function NowPage() {
   }, [])
 
   const nowItems = nowData ? [
-    { icon: '📖', label: 'Reading', value: nowData.reading },
-    { icon: '🎵', label: 'Listening', value: nowData.listening },
-    { icon: '🎬', label: 'Watching', value: nowData.watching },
-    { icon: '🛠', label: 'Making', value: nowData.making },
-    { icon: '🌍', label: 'Thinking About', value: nowData.thinking },
+    { icon: '📖', label: 'Reading', value: nowData.reading, url: nowData.reading_url },
+    { icon: '🎵', label: 'Listening', value: nowData.listening, url: nowData.listening_url },
+    { icon: '🎬', label: 'Watching', value: nowData.watching, url: nowData.watching_url },
+    { icon: '🛠', label: 'Making', value: nowData.making, url: nowData.making_url },
+    { icon: '🌍', label: 'Thinking About', value: nowData.thinking, url: nowData.thinking_url },
   ].filter(i => i.value) : []
 
   return (
@@ -44,13 +44,34 @@ export default function NowPage() {
             <div className="loading-state"><div className="loading-text">// loading...</div></div>
           ) : (
             <div className="now-page-grid">
-              {nowItems.map(item => (
-                <div className="now-card" key={item.label}>
-                  <div className="now-card-icon">{item.icon}</div>
-                  <div className="now-card-label">{item.label}</div>
-                  <div className="now-card-value">{item.value}</div>
-                </div>
-              ))}
+              {nowItems.map(item => {
+                const inner = (
+                  <>
+                    <div className="now-card-icon">{item.icon}</div>
+                    <div className="now-card-label">{item.label}</div>
+                    <div className="now-card-value">{item.value}</div>
+                    {item.url && (
+                      <div style={{marginTop:'8px', fontFamily:'VT323, monospace', fontSize:'13px', color:'var(--link-blue)', letterSpacing:'1px'}}>
+                        Visit →
+                      </div>
+                    )}
+                  </>
+                )
+                return item.url ? (
+                  <a
+                    key={item.label}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="now-card"
+                    style={{textDecoration:'none'}}
+                  >
+                    {inner}
+                  </a>
+                ) : (
+                  <div className="now-card" key={item.label}>{inner}</div>
+                )
+              })}
             </div>
           )}
           <div className="now-page-footer">
