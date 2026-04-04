@@ -214,12 +214,29 @@ export function SiteFooter() {
         <div className="made-with">
           Made with <span className="pixel-heart">♥</span> and intentionality
         </div>
-        <div className="webring-footer">
-          ◀ <a href={prevLink} target={prevLink !== '/links' ? '_blank' : '_self'} rel="noopener noreferrer">prev</a>
+        <div className="webring-footer" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+          <button
+            onClick={() => setWebringIndex(i => (i - 1 + webringLinks.length) % webringLinks.length)}
+            style={{background:'none', border:'none', color:'var(--muted-gold)', cursor:'pointer', fontFamily:'VT323, monospace', fontSize:'16px', padding:'0'}}
+          >◀ prev</button>
           {' · '}
-          <Link href="/links" style={{color:'var(--muted-gold)', textDecoration:'none'}}>IndieWeb Ring</Link>
+          {webringLinks.length > 0 ? (
+            <a
+              href={webringLinks[webringIndex]?.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{color:'var(--muted-gold)', textDecoration:'none', fontFamily:'VT323, monospace', fontSize:'16px'}}
+            >
+              {webringLinks[webringIndex]?.name || 'IndieWeb Ring'}
+            </a>
+          ) : (
+            <Link href="/links" style={{color:'var(--muted-gold)', textDecoration:'none'}}>IndieWeb Ring</Link>
+          )}
           {' · '}
-          <a href={nextLink} target={nextLink !== '/links' ? '_blank' : '_self'} rel="noopener noreferrer">next</a> ▶
+          <button
+            onClick={() => setWebringIndex(i => (i + 1) % webringLinks.length)}
+            style={{background:'none', border:'none', color:'var(--muted-gold)', cursor:'pointer', fontFamily:'VT323, monospace', fontSize:'16px', padding:'0'}}
+          >next ▶</button>
         </div>
         <div>© {new Date().getFullYear()} Tyson Reid · All rights reserved</div>
       </div>
