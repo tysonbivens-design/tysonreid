@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { Ticker, SiteHeader, SiteFooter, DateBanner } from '../components'
 
 const CATEGORIES = ['All', 'Corporate Dystopia', 'Culture', 'Politics', 'Food', 'Travel']
 
@@ -12,19 +13,22 @@ export default function WritingPage() {
   const [activeCategory, setActiveCategory] = useState('All')
 
   useEffect(() => {
+    async function fetchPosts() {
+      const { data } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+      setPosts(data || [])
+      setLoading(false)
+    }
     fetchPosts()
+
+    // Check for category in URL
+    const params = new URLSearchParams(window.location.search)
+    const cat = params.get('category')
+    if (cat) setActiveCategory(cat)
   }, [])
-
-  async function fetchPosts() {
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-
-    if (!error) setPosts(data || [])
-    setLoading(false)
-  }
 
   const filtered = activeCategory === 'All'
     ? posts
@@ -32,55 +36,17 @@ export default function WritingPage() {
 
   return (
     <>
-      <div className="ticker-bar">
-        <div className="ticker-label">★ LIVE ★</div>
-        <div className="ticker-track">
-          <span>All writing — owned, independent, algorithm-free</span>
-          <span>Subscribe to get new posts in your inbox</span>
-          <span>No paywall. No ads. Just words.</span>
-          <span>All writing — owned, independent, algorithm-free</span>
-          <span>Subscribe to get new posts in your inbox</span>
-          <span>No paywall. No ads. Just words.</span>
-        </div>
-      </div>
-
-      <header>
-        <div className="header-top">
-          <div className="header-meta-left">
-            <div>EST. 2025</div>
-            <div>INDEPENDENT SINCE DAY ONE</div>
-            <div>NO ALGORITHMS · NO ADS</div>
-          </div>
-          <div className="site-title-block">
-            <div className="site-eyebrow">Welcome to</div>
-            <div className="site-name">Tyson Reid</div>
-            <div className="site-tagline">Presence is resistance. Curation is revolutionary.</div>
-          </div>
-          <div className="header-meta-right">
-            <div>EST. 2025</div>
-            <div>WRITING ARCHIVE</div>
-          </div>
-        </div>
-        <nav>
-          <Link href="/">[ HOME ]</Link>
-          <Link href="/writing" className="active">[ WRITING ]</Link>
-          <Link href="/studio">[ STUDIO ]</Link>
-          <Link href="/photos">[ PHOTOS ]</Link>
-          <Link href="/about">[ ABOUT ]</Link>
-          <Link href="/guestbook">[ GUESTBOOK ]</Link>
-          <Link href="/now" className="nav-now">NOW PAGE</Link>
-        </nav>
-      </header>
-
+      <Ticker />
+      <SiteHeader activePage="/writing" />
       <div className="page-wrapper">
-        <div className="date-banner">
-          ✦ WRITING ARCHIVE · All Posts · Est. 2025 · Independent & Algorithm-Free ✦
-        </div>
+        <DateBanner label="WRITING ARCHIVE · All Posts · Est. 2025 · Independent & Algorithm-Free" />
 
         <div className="writing-page">
           <div className="writing-header">
             <h1 className="writing-title">The Writing</h1>
-            <p className="writing-subtitle">Corporate noir, cultural commentary, and cynical vignettes with ironically hopeful points of view.</p>
+            <p className="writing-subtitle">
+              Corporate noir, cultural commentary, and cynical vignettes with ironically hopeful points of view.
+            </p>
           </div>
 
           <div className="category-filter">
@@ -96,13 +62,9 @@ export default function WritingPage() {
           </div>
 
           {loading ? (
-            <div className="loading-state">
-              <div className="loading-text">// loading posts...</div>
-            </div>
+            <div className="loading-state"><div className="loading-text">// loading posts...</div></div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-text">// no posts yet in this category. check back soon.</div>
-            </div>
+            <div className="empty-state"><div className="empty-text">// no posts yet in this category.</div></div>
           ) : (
             <div className="posts-list">
               {filtered.map(post => (
@@ -124,14 +86,7 @@ export default function WritingPage() {
           )}
         </div>
       </div>
-
-      <footer>
-        <div className="footer-bottom" style={{maxWidth:'1200px', margin:'0 auto'}}>
-          <div className="made-with">Made with <span className="pixel-heart">♥</span> and intentionality</div>
-          <Link href="/" style={{color:'var(--muted-gold)', fontFamily:'VT323, monospace', fontSize:'16px', textDecoration:'none'}}>← Back to Home</Link>
-          <div>© 2025 Tyson Reid</div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }
