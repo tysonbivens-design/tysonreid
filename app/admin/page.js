@@ -102,6 +102,7 @@ export default function AdminPage() {
   const [photoCaption, setPhotoCaption] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoUrl, setPhotoUrl] = useState('')
+  const [photoCategory, setPhotoCategory] = useState('General')
   const [photoUploading, setPhotoUploading] = useState(false)
   const photoFileRef = useRef()
 
@@ -197,6 +198,22 @@ export default function AdminPage() {
   async function deleteRssFeed(id) { if (!confirm('Delete?')) return; await supabase.from('rss_feeds').delete().eq('id', id); fetchRssFeeds() }
   async function toggleRssFeed(id, active) { await supabase.from('rss_feeds').update({ active: !active }).eq('id', id); fetchRssFeeds() }
 
+  async function addAutoTicker(message, sourceType, sourceId) {
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 7) // expires in 7 days
+    const maxOrder = tickerItems.length > 0 ? Math.max(...tickerItems.map(t => t.sort_order)) : 0
+    await supabase.from('ticker_items').insert([{
+      message,
+      type: 'auto',
+      source_type: sourceType,
+      source_id: sourceId,
+      expires_at: expires.toISOString(),
+      sort_order: maxOrder + 1,
+      active: true
+    }])
+    fetchTickerItems()
+  }
+
   function newPost() { setEditingPost(null); setTitle(''); setSlug(''); setExcerpt(''); setCategory(CATEGORIES[0]); setStatus('draft'); setFeatured(false); editor?.commands.setContent(''); setView('editor') }
   function editPost(post) { setEditingPost(post); setTitle(post.title); setSlug(post.slug); setExcerpt(post.excerpt || ''); setCategory(post.category || CATEGORIES[0]); setStatus(post.status); setFeatured(post.featured || false); editor?.commands.setContent(post.content || ''); setView('editor') }
 
@@ -205,13 +222,22 @@ export default function AdminPage() {
     const content = editor?.getHTML() || ''
     const finalStatus = publishNow ? 'published' : status
     const finalSlug = slug || slugify(title)
+    const isNewPublish = publishNow && (!editingPost || editingPost.status !== 'published')
     const postData = { title, slug: finalSlug, excerpt, content, category, status: finalStatus, featured, updated_at: new Date().toISOString(), ...(publishNow && !editingPost?.published_at ? { published_at: new Date().toISOString() } : {}) }
-    let error
-    if (editingPost) { const res = await supabase.from('posts').update(postData).eq('id', editingPost.id); error = res.error }
-    else { const res = await supabase.from('posts').insert([{ ...postData, created_at: new Date().toISOString() }]); error = res.error }
+    let error, newId
+    if (editingPost) { const res = await supabase.from('posts').update(postData).eq('id', editingPost.id); error = res.error; newId = editingPost.id }
+    else { const res = await supabase.from('posts').insert([{ ...postData, created_at: new Date().toISOString() }]).select(); error = res.error; newId = res.data?.[0]?.id }
     setSaving(false)
     if (error) { setSaveMsg('Error: ' + error.message) }
-    else { setSaveMsg(publishNow ? '✓ Published!' : '✓ Saved as draft'); setStatus(finalStatus); fetchPosts(); setTimeout(() => setSaveMsg(''), 3000) }
+    else {
+      setSaveMsg(publishNow ? '✓ Published!' : '✓ Saved as draft')
+      setStatus(finalStatus)
+      fetchPosts()
+      if (isNewPublish && title) {
+        await addAutoTicker(`New post: "${title}" — just published`, 'post', newId)
+      }
+      setTimeout(() => setSaveMsg(''), 3000)
+    }
   }
 
   async function deletePost(id) { if (!confirm('Delete this post?')) return; await supabase.from('posts').delete().eq('id', id); fetchPosts() }
@@ -251,7 +277,14 @@ export default function AdminPage() {
     if (editingVideo) { const res = await supabase.from('videos').update(videoData).eq('id', editingVideo.id); error = res.error }
     else { const res = await supabase.from('videos').insert([videoData]); error = res.error }
     setSaving(false)
-    if (!error) { setSaveMsg('✓ Video saved!'); setVideoTitle(''); setVideoDesc(''); setVideoYoutubeInput(''); setVideoFile(null); setEditingVideo(null); if (videoFileRef.current) videoFileRef.current.value = ''; fetchVideos(); setTimeout(() => setSaveMsg(''), 3000) }
+    if (!error) {
+      setSaveMsg('✓ Video saved!')
+      setVideoTitle(''); setVideoDesc(''); setVideoYoutubeInput(''); setVideoFile(null); setEditingVideo(null)
+      if (videoFileRef.current) videoFileRef.current.value = ''
+      fetchVideos()
+      if (!editingVideo) await addAutoTicker(`New video in the Studio: "${videoTitle}"`, 'video', null)
+      setTimeout(() => setSaveMsg(''), 3000)
+    }
     else { setSaveMsg('Error: ' + error.message) }
   }
 
@@ -272,8 +305,10 @@ export default function AdminPage() {
     }
     if (!finalUrl) { setPhotoUploading(false); return }
     const maxOrder = photos.length > 0 ? Math.max(...photos.map(p => p.sort_order)) : 0
-    await supabase.from('photos').insert([{ url: finalUrl, storage_path: storagePath, caption: photoCaption || null, sort_order: maxOrder + 1 }])
-    setPhotoUploading(false); setPhotoCaption(''); setPhotoFile(null); setPhotoUrl(''); if (photoFileRef.current) photoFileRef.current.value = ''; fetchPhotos(); setSaveMsg('✓ Photo added!'); setTimeout(() => setSaveMsg(''), 3000)
+    await supabase.from('photos').insert([{ url: finalUrl, storage_path: storagePath, caption: photoCaption || null, category: photoCategory || 'General', sort_order: maxOrder + 1 }])
+    setPhotoUploading(false); setPhotoCaption(''); setPhotoFile(null); setPhotoUrl(''); setPhotoCategory('General'); if (photoFileRef.current) photoFileRef.current.value = ''; fetchPhotos()
+    await addAutoTicker('New photos added to the gallery', 'photo', null)
+    setSaveMsg('✓ Photo added!'); setTimeout(() => setSaveMsg(''), 3000)
   }
 
   async function deletePhoto(id, storagePath) { if (!confirm('Delete this photo?')) return; if (storagePath) await supabase.storage.from('photos').remove([storagePath]); await supabase.from('photos').delete().eq('id', id); fetchPhotos() }
@@ -406,8 +441,18 @@ export default function AdminPage() {
             </div>
             <div className="posts-table">
               {tickerItems.map(item => (
-                <div key={item.id} className="posts-table-row" style={{ gridTemplateColumns: '1fr auto auto' }}>
-                  <span style={{ color: item.active ? 'var(--dark-brown)' : 'var(--sage)', fontStyle: item.active ? 'normal' : 'italic' }}>{item.message}</span>
+                <div key={item.id} className="posts-table-row" style={{ gridTemplateColumns: '1fr auto auto auto' }}>
+                  <span style={{ color: item.active ? 'var(--dark-brown)' : 'var(--sage)', fontStyle: item.active ? 'normal' : 'italic' }}>
+                    {item.message}
+                    {item.type === 'auto' && (
+                      <span style={{fontFamily:'VT323,monospace',fontSize:'12px',color:'var(--dusty-blue)',marginLeft:'8px',background:'#1a2530',padding:'1px 6px'}}>AUTO</span>
+                    )}
+                    {item.expires_at && (
+                      <span style={{fontFamily:'VT323,monospace',fontSize:'12px',color:'var(--sage)',marginLeft:'6px'}}>
+                        expires {new Date(item.expires_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </span>
                   <button onClick={() => toggleTickerItem(item.id, item.active)} style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', padding: '4px 10px', background: 'transparent', border: '1px solid var(--border)', color: item.active ? 'var(--pixel-green)' : 'var(--sage)', cursor: 'pointer' }}>{item.active ? 'Active' : 'Hidden'}</button>
                   <button onClick={() => deleteTickerItem(item.id)} style={{ fontFamily: 'Space Mono, monospace', fontSize: '10px', padding: '4px 10px', background: 'transparent', border: '1px solid var(--rust)', color: 'var(--rust)', cursor: 'pointer' }}>Delete</button>
                 </div>
@@ -567,6 +612,7 @@ export default function AdminPage() {
                   </div>
                   <div className="field-group"><label>— OR — External URL</label><input type="text" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." /></div>
                   <div className="field-group"><label>Caption</label><input type="text" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} placeholder="Optional caption..." /></div>
+                  <div className="field-group"><label>Category / Album</label><input type="text" value={photoCategory} onChange={e => setPhotoCategory(e.target.value)} placeholder="General, Travel, Film, Food..." /></div>
                   {saveMsg && <div className="save-msg">{saveMsg}</div>}
                   <button onClick={uploadPhoto} disabled={photoUploading} className="publish-btn">{photoUploading ? 'Uploading...' : '✓ Add Photo'}</button>
                 </div>
