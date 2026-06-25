@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 import { Ticker, SiteHeader, SiteFooter, DateBanner } from './components'
+import { Ticker, SiteHeader, SiteFooter, DateBanner, GuestbookPrompt } from './components'
 
 // ── FEED WIDGET ─────────────────────────────────────────────
 function FeedWidget() {
