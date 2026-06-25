@@ -244,6 +244,8 @@ export function SiteFooter() {
   )
 }
 
+export { GuestbookPrompt } from './guestbook-prompt'
+
 // ── DATE BANNER ────────────────────────────────────────────
 export function DateBanner({ label }) {
   const dateStr = new Date().toLocaleDateString('en-US', {
