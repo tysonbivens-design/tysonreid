@@ -427,6 +427,7 @@ export default function Home() {
       </div>
 
       <SiteFooter />
+      <GuestbookPrompt />
       <Link href="#" className="back-top">▲ TOP</Link>
     </>
   )
